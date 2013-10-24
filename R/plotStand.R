@@ -1,3 +1,29 @@
+#' Plot a stand in 3D
+#' @description More details on what it does
+#' @param siteData blah
+#' @param treeData blah
+#' @param verbose Logical
+#' @param nz Number of 3D triangles in the Z direction (?)
+#' @param nalpha Number of angles (...)
+#' @param zvals blah
+#' @param \dots Further arguments (currently ignored)
+#' @export
+#' @examples
+#' # Example stand plot
+#' siteData <- list(x0=0,
+#' xmax=10,
+#' y0=0,
+#' ymax=10)
+#' siteData$area <- with(siteData, (xmax - x0) * (ymax - y0))
+#' 
+#' standViz:::newRgl()
+#' noTrees <- 10
+#' treeData <- data.frame(topHeight = rep(20, times = noTrees), 
+#' heightCrownBase = rep(0,times = noTrees), 
+#' crownWidth = rep(10, times = noTrees), 
+#' dbh = rep(0.5, times = noTrees),
+#' crownShape = "yokozawa", eta = 10)
+#' plotStand(siteData, treeData, verbose = FALSE)
 plotStand <- function(siteData, treeData, verbose = FALSE, nz = 25, nalpha = 25,
     zvals = NA, ...) {
     bg3d("white")

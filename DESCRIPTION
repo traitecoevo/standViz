@@ -1,0 +1,21 @@
+Package: standViz
+Type: Package
+Title: Visualizing a stand of trees in 3D
+Version: 0.1
+Date: 2013-10-25
+Author: Daniel Falster and Remko Duursma
+Depends:
+    rgl
+Maintainer: Daniel Falster <daniel.falster@mq.edu.au>
+Description: Using rgl, makes a 3D plot of a stand of trees, given crown
+    shapes, locations, etc.
+License: GPL
+LazyData: yes
+Collate:
+    'make3dShape.R'
+    'newRgl.R'
+    'plot3dShape.R'
+    'plotStand.R'
+    'plotTree.R'
+    'resize3dShape.R'
+    'yokozawaDensity.R'

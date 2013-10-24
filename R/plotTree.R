@@ -1,5 +1,29 @@
-# plots a tree if available, uses stem and cronw shape Matrices provided, leading
-# to faster computing times. Otherwise recalculates these
+#' Plot a single tree in 3D
+#' @description Plots a tree if available, uses stem and cronw shape Matrices provided, leading 
+#' to faster computing times. Otherwise recalculates these.
+#' @param X
+#' @param Y
+#' @param topHeight
+#' @param heightCrownBase
+#' @param crownWidth
+#' @param dbh
+#' @param crownShapeMatrix
+#' @param stemShapeMatrix
+#' @param crownShape One of "cone", "elipsoid", "ellipsoid", "round", "halfellipsoid", "paraboloid", "cylinder", "yokozawa"
+#' @param eta
+#' @param crownColor
+#' @param stemColor
+#' @param nz
+#' @param nalpha
+#' @param zvals
+#' @export
+#' @seealso \code{\link{plotStand}}
+#' @examples
+#' # some examples here.
+#' standViz:::newRgl()
+#' zvals <- c(0, seq(0.4, 0.9, by = 0.025), seq(0.91, 1, by = 0.01))
+#' plotTree(crownShape = "yokozawa", crownWidth = 5, topHeight = 10, heightCrownBase = 0,
+#' dbh = 0.1, eta = 13, zvals = zvals)
 plotTree <- function(X = 0, Y = 0, topHeight = 1, heightCrownBase = 0, crownWidth = 1,
     dbh = 0.01, crownShapeMatrix = NA, stemShapeMatrix = NA, crownShape = c("cone",
         "elipsoid", "ellipsoid", "round", "halfellipsoid", "paraboloid", "cylinder",
