@@ -27,13 +27,17 @@
 plotStand <- function(siteData, treeData, verbose = FALSE, nz = 25, nalpha = 25,
     zvals = NA, ...) {
     bg3d("white")
+
     # make new Stand
     M <- matrix(c(siteData$x0, siteData$y0, 0, siteData$xmax, siteData$y0, 0, siteData$xmax,
         siteData$ymax, 0, siteData$x0, siteData$ymax, 0, siteData$x0, siteData$y0,
         0), ncol = 3, byrow = TRUE)
     lines3d(M, col = "darkgrey")
+
     noTrees <- length(treeData[, 1])
+
     if (noTrees > 0) {
+
         # Check for missing data
         if (is.null(treeData$crownShape))
             treeData$crownShape <- rep("yokozawa", noTrees)
@@ -47,22 +51,32 @@ plotStand <- function(siteData, treeData, verbose = FALSE, nz = 25, nalpha = 25,
             treeData$X <- runif(noTrees, min = siteData$x0, max = siteData$xmax)
         if (is.null(treeData$Y))
             treeData$Y <- runif(noTrees, min = siteData$y0, max = siteData$ymax)
-        # Make basic shapes for crown and stem - these are reused, saves recomputing them
-        # TO DO: possibility of different shapes in same stand,
-        crownShapeMatrix <- make3dShape(shape = as.character(treeData$crownShape[1]),
-            treeData$eta[1], nz = nz, nalpha = nalpha, zvals = zvals)
+
+        species <- paste(treeData$crownShape, treeData$eta, treeData$crownColor)
         stemShapeMatrix <- make3dShape(shape = "cone", nz = 2, nalpha = 5)
-        if (verbose) {
-            message("\nPlotting ", noTrees, " trees\n")
-        }
-        for (i in 1:noTrees) {
-            if (verbose) {
-                cat(i, " ")
+
+        if (verbose)
+            message("\nPlotting ", noTrees, " trees from ", length(unique(species)), " species\n")
+
+        for(s in unique(species)){
+
+            treeData.sp <- subset(treeData, s==species)
+
+            if (verbose)
+                message("\nPlotting ", nrow(treeData.sp), " trees from species ", s, "\n")
+
+            # Make basic shapes for crown and stem - these are reused, saves recomputing them
+            crownShapeMatrix <- make3dShape(shape = as.character(treeData.sp$crownShape[1]),
+            treeData.sp$eta[1], nz = nz, nalpha = nalpha, zvals = zvals)
+
+            crowns <- stems <- list()
+            for (i in 1:nrow(treeData.sp)) {
+                crowns[[i]] <- getCrownTriangles(X = treeData.sp$X[i], Y = treeData.sp$Y[i], topHeight = treeData.sp$topHeight[i], heightCrownBase = treeData.sp$heightCrownBase[i], crownWidth = treeData.sp$crownWidth[i], crownShapeMatrix = crownShapeMatrix)
+                stems[[i]] <- getStemTriangles(X = treeData.sp$X[i], Y = treeData.sp$Y[i], topHeight = treeData.sp$topHeight[i], dbh = treeData.sp$dbh[i], stemShapeMatrix = stemShapeMatrix)
             }
-            plotTree(X = treeData$X[i], Y = treeData$Y[i], topHeight = treeData$topHeight[i],
-                heightCrownBase = treeData$heightCrownBase[i], crownWidth = treeData$crownWidth[i],
-                dbh = treeData$dbh[i], crownShapeMatrix = crownShapeMatrix, stemShapeMatrix = stemShapeMatrix,
-                crownColor = treeData$crownColor[i], stemColor = "brown")
+
+            plot3dShape(do.call(rbind,crowns) , col = treeData.sp$crownColor[1])
+            plot3dShape(do.call(rbind,stems), col = treeData.sp$stemColor[1])
         }
     }
 }
