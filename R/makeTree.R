@@ -1,8 +1,8 @@
 #' Plot a single tree in 3D
 #' @description Plots a tree if available, uses stem and cronw shape Matrices provided, leading 
 #' to faster computing times. Otherwise recalculates these.
-#' @param X
-#' @param Y
+#' @param x
+#' @param y
 #' @param topHeight
 #' @param heightCrownBase
 #' @param crownWidth
@@ -24,7 +24,7 @@
 #' zvals <- c(0, seq(0.4, 0.9, by = 0.025), seq(0.91, 1, by = 0.01))
 #' plotTree(crownShape = "yokozawa", crownWidth = 5, topHeight = 10, heightCrownBase = 0,
 #' dbh = 0.1, eta = 13, zvals = zvals)
-makeTree <- function(X = 0, Y = 0,
+makeTree <- function(x = 0, y = 0,
     topHeight = 1, heightCrownBase = 0, crownWidth = 1, dbh = 0.01,
     crownShapeMatrix = NA, crownShape = c("cone",
         "elipsoid", "ellipsoid", "round", "halfellipsoid", "paraboloid", "cylinder",
@@ -42,9 +42,9 @@ makeTree <- function(X = 0, Y = 0,
         stemShapeMatrix <- make3dShape(shape = "cone", nz = 2, nalpha = nalpha, zvals = zvals)
 
     myTree <- list(
-        crown = resize3dShape(crownShapeMatrix, height = topHeight - heightCrownBase, width = crownWidth, x0 = X, y0 = Y, z0 = heightCrownBase),
+        crown = resize3dShape(crownShapeMatrix, height = topHeight - heightCrownBase, width = crownWidth, x0 = x, y0 = y, z0 = heightCrownBase),
         crownColor = crownColor,
-        stem = resize3dShape(stemShapeMatrix, height = topHeight, width = dbh, x0 = X, y0 = Y, z0 = 0),
+        stem = resize3dShape(stemShapeMatrix, height = topHeight, width = dbh, x0 = x, y0 = y, z0 = 0),
         stemColor = stemColor)
 
     class(myTree) <- "standVizTree"

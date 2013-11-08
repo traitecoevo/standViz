@@ -15,8 +15,8 @@
 #' crownWidth = rep(10, times = noTrees),
 #' dbh = rep(0.5, times = noTrees),
 #' crownShape = "yokozawa", eta = 10,
-#' X = runif(noTrees, min = 1, max = 10),
-#' Y = runif(noTrees, min = 1, max = 10))
+#' x = runif(noTrees, min = 1, max = 10),
+#' y = runif(noTrees, min = 1, max = 10))
 #' myStand <- makeStand(treeData)
 #' plot(myStand)
 
@@ -42,8 +42,8 @@ makeStand <- function(treeData, nz = 25, nalpha = 25, zvals = NA, ...) {
         if(!is.null(noTrees)){
             for (i in 1:noTrees)
                 stand[[t+i]] <- makeTree(
-                    X=treeData.sp$X[i],
-                    Y=treeData.sp$Y[i],
+                    x=treeData.sp$x[i],
+                    y=treeData.sp$y[i],
                     topHeight=treeData.sp$topHeight[i],
                     heightCrownBase=treeData.sp$heightCrownBase[i],
                     crownWidth=treeData.sp$crownWidth[i],

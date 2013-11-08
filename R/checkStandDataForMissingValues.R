@@ -14,7 +14,7 @@ checkStandDataForMissingValues <- function(treeData, crownShape="yokozawa",
          treeData[["species"]] <- as.character(as.factor(
             paste(treeData$crownShape, treeData$eta, treeData$crownColor)))
 
-        essentialVariables <- c("X","Y","topHeight","heightCrownBase","crownWidth","dbh")
+        essentialVariables <- c("x","y","topHeight","heightCrownBase","crownWidth","dbh")
         for(v in essentialVariables)
           if (is.null(treeData[[v]]))
             stop(paste(v, "values needed to make stand"))
