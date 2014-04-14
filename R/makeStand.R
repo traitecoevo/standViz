@@ -20,7 +20,7 @@
 #' myStand <- makeStand(treeData)
 #' plot(myStand)
 
-makeStand <- function(treeData, nz = 25, nalpha = 25, zvals = NA, ...) {
+makeStand <- function(treeData, nz = 25, nalpha = 25, zvals = NA, scaling=c(1,1),...) {
 
     myTreeData <- checkStandDataForMissingValues(treeData)
 
@@ -51,7 +51,8 @@ makeStand <- function(treeData, nz = 25, nalpha = 25, zvals = NA, ...) {
                     crownShapeMatrix=crownShapeMatrix,
                     stemShapeMatrix=stemShapeMatrix,
                     crownColor=treeData.sp$crownColor[i],
-                    stemColor=treeData.sp$stemColor[i])
+                    stemColor=treeData.sp$stemColor[i],
+                    scaling=scaling)
             t= t+i
         }
 
