@@ -14,7 +14,7 @@ make_stand_dataframe <- function(trees, crown_shape = "yokozawa", eta = 5,
                                   crown_color = "forestgreen",
                                   stem_color = "brown") {
 
-  if ( is.null(trees) | nrow(trees) == 0 ) {
+  if ( is.null(trees) || nrow(trees) == 0 ) {
     return(trees)
   }
 
@@ -27,7 +27,7 @@ make_stand_dataframe <- function(trees, crown_shape = "yokozawa", eta = 5,
   trees[["species"]] <- sprintf("%s-%s-%s", trees[["crown_shape"]],
                                       trees[["eta"]], trees[["crown_color"]])
 
-  for (v in c("x", "y", "top_height", "height_crown_base",
+  for (v in c("x", "y", "height", "height_crown_base",
                                             "crown_width", "dbh") ) {
     if (is.null(trees[[v]]) )
       stop(paste(v, "values needed to make stand") )
@@ -77,7 +77,7 @@ make_shape <- function(shape = c("cone", "ellipsoid", "halfellipsoid",
   }
   # Make matrix of x,y,z values, by choosing points with given radius and angle
   # at a given height
-  #scaled to specified object width
+  # scaled to specified object width
   radius <- rep(0.5 * f(zvals) / max(f(zvals) ), times = nalpha)
   angles <- rep(seq(0, 2 * pi, length = nalpha), each = nz)
   x <- radius * cos(angles)
@@ -90,9 +90,9 @@ make_shape <- function(shape = c("cone", "ellipsoid", "halfellipsoid",
   # heights)
   tm <- matrix(nrow = 3, ncol = (nalpha - 1) * 2 * (nz - 1) )
   r <- 1
-  for (ai in seq_len(length(nalpha - 1) )) {
+  for (ai in seq_len(nalpha - 1)) {
     # do for all angles do for each height
-    for (zi in seq_len(length(nz - 1) )) {
+    for (zi in seq_len(nz - 1)) {
       # first (upper) triangle
       tm[1, r] <- (ai - 1) * nz + zi
       tm[2, r] <- (ai) * nz + zi
@@ -136,7 +136,7 @@ make_stand <- function(trees, scaling = c(1, 1), ...) {
     for (i in seq_len(nrow(d) )) {
       stand[[t + i]] <- make_tree(x = d[["x"]][i],
                                   y = d[["y"]][i],
-                                  top_height = d[["top_height"]][i],
+                                  height = d[["height"]][i],
                                   height_crown_base =
                                                     d[["height_crown_base"]][i],
                                   crown_width = d[["crown_width"]][i],
@@ -160,7 +160,7 @@ make_stand <- function(trees, scaling = c(1, 1), ...) {
 #' @title Creates a single tree with specified characteristics
 #' @param x Location in x dimension
 #' @param y Location in x dimension
-#' @param top_height Top height of tree
+#' @param height Top height of tree
 #' @param height_crown_base Height of crown base
 #' @param crown_width Width of crown
 #' @param dbh Diameter at breast height
@@ -179,7 +179,7 @@ make_stand <- function(trees, scaling = c(1, 1), ...) {
 #' shape and colour of crown and stem
 #' @export
 #' @seealso \code{\link{plot_stand}}, \code{\link{plot_tree}}
-make_tree <- function(x = 0, y = 0, top_height = 1, height_crown_base = 0,
+make_tree <- function(x = 0, y = 0, height = 1, height_crown_base = 0,
                       crown_width = 1, dbh = 0.01, crown = NULL,
                       crown_shape = c("cone", "elipsoid", "ellipsoid",
                           "round", "halfellipsoid", "paraboloid", "cylinder",
@@ -189,27 +189,27 @@ make_tree <- function(x = 0, y = 0, top_height = 1, height_crown_base = 0,
                       nz = 25, nalpha = 25, zvals = NULL,
                       scaling = c(1, 1), ...) {
 
-  # Makes a basic crown shape, with top_height 1.0, width 1.0, located at
+  # Makes a basic crown shape, with height 1.0, width 1.0, located at
   # (0,0,0)
   if (is.null(crown) ) {
     crown <- make_shape(shape = match.arg(crown_shape), eta = eta, nz = nz,
                           nalpha = nalpha, zvals = zvals, ...)
   }
 
-  # Makes a basic stem, with top_height 1.0, width 1.0, located at (0,0,0)
+  # Makes a basic stem, with height 1.0, width 1.0, located at (0,0,0)
   if (is.null(stem) ) {
     stem <- make_shape(shape = "cone", nz = 2, nalpha = nalpha, zvals = zvals)
   }
 
   tree <- list(crown = resize_shape(crown,
-                                      height = (top_height - height_crown_base)
+                                      height = (height - height_crown_base)
                                                 * scaling[1],
                                       width = crown_width * scaling[2],
                                       x = x, y = y,
                                       z = height_crown_base * scaling[1]),
               crown_color = crown_color,
               stem = resize_shape(stem,
-                                    height = top_height * scaling[1],
+                                    height = height * scaling[1],
                                     width = dbh * scaling[2],
                                     x = x, y = y, z = 0),
               stem_color = stem_color)
@@ -289,11 +289,11 @@ plot_tree <- function(tree, ...) {
 #' Scale and reposition a shape.
 #' @title Scale and reposition a shape
 #' @param shape Initial shape, defined by a matrix with columns [X,Y,Z]
-#' @param height Desired height
-#' @param width Desired width
-#' @param x Desired offset in X dimension
-#' @param y Desired offset in Y dimension
-#' @param z Desired offset in Z dimension
+#' @param height Height of resized object
+#' @param width Width of resized object
+#' @param x Offset in X dimension
+#' @param y Offset in Y dimension
+#' @param z Offset in Z dimension
 #' @return Resized and repositioned shape, defined by a matrix with columns [X,Y,Z]
 #' @export
 resize_shape <- function(shape, height = 1, width = 1, x = 0, y = 0, z = 0) {

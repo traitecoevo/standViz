@@ -9,15 +9,15 @@ resize_shape(shape, height = 1, width = 1, x = 0, y = 0, z = 0)
 \arguments{
 \item{shape}{Initial shape, defined by a matrix with columns [X,Y,Z]}
 
-\item{height}{Desired height}
+\item{height}{Height of resized object}
 
-\item{width}{Desired width}
+\item{width}{Width of resized object}
 
-\item{x}{Desired offset in X dimension}
+\item{x}{Offset in X dimension}
 
-\item{y}{Desired offset in Y dimension}
+\item{y}{Offset in Y dimension}
 
-\item{z}{Desired offset in Z dimension}
+\item{z}{Offset in Z dimension}
 }
 \value{
 Resized and repositioned shape, defined by a matrix with columns [X,Y,Z]

@@ -4,7 +4,7 @@
 \alias{make_tree}
 \title{Creates a single tree with specified characteristics}
 \usage{
-make_tree(x = 0, y = 0, top_height = 1, height_crown_base = 0,
+make_tree(x = 0, y = 0, height = 1, height_crown_base = 0,
   crown_width = 1, dbh = 0.01, crown = NULL, crown_shape = c("cone",
   "elipsoid", "ellipsoid", "round", "halfellipsoid", "paraboloid", "cylinder",
   "yokozawa"), eta = 13, crown_color = "forestgreen", stem = NULL,
@@ -16,7 +16,7 @@ make_tree(x = 0, y = 0, top_height = 1, height_crown_base = 0,
 
 \item{y}{Location in x dimension}
 
-\item{top_height}{Top height of tree}
+\item{height}{Top height of tree}
 
 \item{height_crown_base}{Height of crown base}
 
