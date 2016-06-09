@@ -1,4 +1,4 @@
-standViz
+treesrgl
 ========
 
 Make 3D plots of individual trees and stands in R using `rgl` (openGL).
@@ -8,5 +8,5 @@ Adapted stand plotting algorithm from the [Maeswrap](https://bitbucket.org/remko
 To install this package,
 ```
 library(devtools)
-install_github("standviz","dfalster")
+install_github("traitecoevo/treesrgl")
 ```
