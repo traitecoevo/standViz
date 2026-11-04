@@ -4,7 +4,13 @@
 \alias{write_viewer}
 \title{Write a stand as an interactive 3D page}
 \usage{
-write_viewer(stand, file, title = "Stand through time", standalone = TRUE)
+write_viewer(
+  stand,
+  file,
+  title = "Stand through time",
+  standalone = TRUE,
+  colour_by = c(Growth = "net_mass_production_dt", `Leaf area` = "area_leaf")
+)
 }
 \arguments{
 \item{stand}{A \code{standviz_stand} from \code{\link[=realise_stand]{realise_stand()}}.}
@@ -16,6 +22,10 @@ write_viewer(stand, file, title = "Stand through time", standalone = TRUE)
 \item{standalone}{Wrap the page in its own \verb{<html>} document, so it opens
 from disk. \code{FALSE} writes the bare fragment, for hosts that supply the
 document (such as a claude.ai artifact).}
+
+\item{colour_by}{Further state variables the viewer can colour trees by, as
+a named character vector of column names in \code{stand_long()} with the names
+as button labels. Each adds two bytes per tree per frame to the page.}
 }
 \value{
 \code{file}, invisibly.

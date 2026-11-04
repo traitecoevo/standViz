@@ -6,22 +6,23 @@
 
 ## Layout
 
-- `R/allometry.R`: FF16 geometry (leaf area, stem diameter, crown profile), mirroring `plant`'s `ff16_strategy.h`.
-- `R/realise.R`: `realise_stand()`, which builds node trajectories at frame times, trees per node interval, positions and the light profile.
-- `R/output.R`: `stand_long()`, `write_viewer()` and the viewer's JSON contract (`stand_json()`).
+- `R/realise.R`: `realise_stand()`. It samples trees with `plant::sample_size_distribution()`, takes their sizes from `plant::expand_state()`, places them, and builds the light profile.
+- `R/allometry.R`: crown drawing only (`crown_scale()`, `crown_profile()`); every other size comes from plant.
+- `R/output.R`: `stand_long()`, `write_viewer()` and the viewer's JSON contract (`stand_json()`, `pack_u16()`).
 - `inst/viewer/viewer.html`: the viewer template. It is a page fragment (no `<html>`/`<head>`); `write_viewer(standalone = TRUE)` wraps it. Tokens `__STAND_TITLE__` and `__STAND_DATA__` are filled in.
 - `inst/examples/make_demo.R`: the two-species FF16 demo.
 
 ## Build & test
 
 - `make install` (runs roxygen first), `make test`, `make check`, `make demo`.
-- Tests need `plant`. Build it from `develop`; the site-library copy can lag.
+- standviz needs a plant with `sample_size_distribution()` (traitecoevo/plant#722 and its fix #724). Build plant from `develop`, because the site-library copy can lag.
+- Runs must carry density in birth date: `plant::control(node_density_coordinate = "birth_date")`.
 - To look at the viewer, write a page and screenshot it with headless Chrome: `--headless=new --use-angle=swiftshader --enable-unsafe-swiftshader --screenshot`. Headless Chrome will not go narrower than about 500 px, so a narrower screenshot is cropped rather than reflowed.
 
 ## Gotchas
 
-- `plant` marks a node with no survivors with infinite cumulative mortality; `realise_species()` caps it before splining.
-- Just after an interval forms, density can fall several hundredfold across it. Counts and within-interval positions therefore use a log-linear density, not a trapezium; switching back overcounts the tall end of an interval.
+- `plant::expand_state()` pairs species with strategies by position after a `split()`, so `tree_geometry()` makes `species` a factor carrying every level, or a species with no trees would shift the pairing.
+- Test counts against plant's integral at collected steps, or the nearest one: a frame between steps compares with a total from a different time.
 - Tree placement is quadratic in the trees it spaces, so only large crowns are spaced from one another (see `place_trees()`).
 
 ## Plant family

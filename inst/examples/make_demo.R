@@ -11,9 +11,10 @@ p <- scm_base_parameters("FF16")
 p$max_patch_lifetime <- 100
 p <- add_strategies(p, trait_matrix(c(0.0825, 0.2), "lma"),
                     birth_rate = c(20, 20))
-results <- run_scm(p, collect = TRUE)
+results <- run_scm(p, ctrl = control(node_density_coordinate = "birth_date"),
+                   collect = TRUE)
 
-stand <- realise_stand(results, side = 20, min_height = 1)
+stand <- realise_stand(results, side = 20)
 print(stand)
 write_viewer(stand, out, title = "Pioneer to successor")
 message("Wrote ", out)

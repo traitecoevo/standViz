@@ -83,7 +83,7 @@ th:first-child { padding-left: 0; }
 .time output { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--muted); min-width: 7ch; text-align: right; }
 .ctl { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12.5px; }
 select { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
 .seg label { cursor: pointer; }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
 .seg span { display: block; padding: 5px 10px; color: var(--fg); font-size: 12.5px; }
@@ -177,20 +177,36 @@ const RAMPS = {
   height: { stops: ["#264d63", "#3f9068", "#d9d56a"], title: "Height" },
 };
 
-// Flatten each species' node trajectories (frame rows x node columns) for
-// fast lookup; null (node not yet born) becomes NaN.
+// The light profile, flattened (frame rows x height columns).
 const flat = rows => {
   const n = rows[0].length, out = new Float32Array(rows.length * n);
-  rows.forEach((r, f) => r.forEach((v, i) => { out[f * n + i] = v === null ? NaN : v; }));
+  rows.forEach((r, f) => r.forEach((v, i) => { out[f * n + i] = v; }));
   return { n, data: out };
 };
-const nodes = D.nodes.map(s => ({
-  height: flat(s.height), crown: flat(s.crown_scale), stem: flat(s.stem_diameter),
-}));
+// Each tree's size at each frame it is visible: 16-bit integers scaled by the
+// variable's maximum, contiguous per tree from trees.offset, in frame order.
+const unpack = ({ min, scale, data }) => {
+  const bytes = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+  const q = new Uint16Array(bytes.buffer, 0, bytes.length / 2);
+  return Float32Array.from(q, v => min + v * scale);
+};
+const rows = {
+  height: unpack(D.rows.height), crown: unpack(D.rows.crown_scale), stem: unpack(D.rows.stem_diameter),
+};
+// Further variables offered as colours, from write_viewer(colour_by = ...). A
+// variable that crosses zero (net production in deep shade) gets a diverging
+// ramp centred on zero.
+const extras = (D.colour || []).map((c, i) => {
+  const lo = c.min, hi = c.min + c.scale * 65535;
+  const diverging = lo < 0 && hi > 0;
+  return { key: `x${i}`, label: c.label, values: unpack(c), lo, hi, diverging,
+           stops: diverging ? ["#8a5a2b", "#e9e4cf", "#2f7d4a"] : ["#2a3f5f", "#3f8f7a", "#dcd56a"] };
+});
 const lightGrid = D.light.height;
 const lightVal = flat(D.light.value);
 const T = D.trees;
-const nTrees = T.v.length;
+const nTrees = T.x.length;
+T.death = T.birth.map((b, j) => b + T.frames[j]);   // first frame not visible
 const hTop = lightGrid[lightGrid.length - 1];
 
 document.getElementById("eyebrow").textContent =
@@ -307,7 +323,7 @@ tiles.visible = false;
 scene.add(tiles);
 
 // ---- state at a fractional frame -----------------------------------------
-const at = (m, f, i, v) => m.data[f * m.n + i] * (1 - v) + m.data[f * m.n + i + 1] * v;
+const at = (m, j, f) => m[T.offset[j] + f - T.birth[j]];
 const lightAt = (f, w, z) => {
   const g = lightGrid, step = g[1] - g[0];
   const p = Math.min(Math.max((z - g[0]) / step, 0), g.length - 1.000001);
@@ -333,23 +349,22 @@ function update(t) {
   const f = Math.min(Math.floor(t), nF - 1), w = t - f, f1 = Math.min(f + 1, nF - 1);
   const stats = [];
   D.species.forEach((sp, k) => {
-    const { crown, stem } = meshes[k], nd = nodes[k];
+    const { crown, stem } = meshes[k];
     let c = 0, n = 0, ba = 0, top = 0;
     for (const j of bySpecies[k]) {
       const b = T.birth[j], d = T.death[j];
       if (f < b - 1 || f >= d) continue;
-      const i = T.interval[j], v = T.v[j];
       let h, cs, sd, grow = 1, fall = 0;
       if (f === b - 1) {                       // appears during this frame
-        h = at(nd.height, b, i, v); cs = at(nd.crown, b, i, v); sd = at(nd.stem, b, i, v);
+        h = at(rows.height, j, b); cs = at(rows.crown, j, b); sd = at(rows.stem, j, b);
         grow = w;
-      } else if (f === d - 1 && d < nF) {      // dies during this frame: it falls
-        h = at(nd.height, f, i, v); cs = at(nd.crown, f, i, v); sd = at(nd.stem, f, i, v);
-        fall = w;
+      } else if (f === d - 1) {                // last frame seen
+        h = at(rows.height, j, f); cs = at(rows.crown, j, f); sd = at(rows.stem, j, f);
+        if (d < nF) fall = w;                  // dies during this frame: it falls
       } else {
-        h = at(nd.height, f, i, v) * (1 - w) + at(nd.height, f1, i, v) * w;
-        cs = at(nd.crown, f, i, v) * (1 - w) + at(nd.crown, f1, i, v) * w;
-        sd = at(nd.stem, f, i, v) * (1 - w) + at(nd.stem, f1, i, v) * w;
+        h = at(rows.height, j, f) * (1 - w) + at(rows.height, j, f1) * w;
+        cs = at(rows.crown, j, f) * (1 - w) + at(rows.crown, j, f1) * w;
+        sd = at(rows.stem, j, f) * (1 - w) + at(rows.stem, j, f1) * w;
       }
       if (!(h > 0)) continue;
       if (fall === 0 && grow === 1) { n++; ba += Math.PI * sd * sd / 4; top = Math.max(top, h); }
@@ -367,8 +382,14 @@ function update(t) {
         col.copy(speciesCol[k % speciesCol.length]).multiplyScalar(0.62 + 0.38 * lightAt(f, w, h * sp.eta_c));
       } else if (colourBy === "light") {
         col.copy(ramp(RAMPS.light.stops, lightAt(f, w, h * sp.eta_c)));
-      } else {
+      } else if (colourBy === "height") {
         col.copy(ramp(RAMPS.height.stops, h / hTop));
+      } else {
+        const x = extraByKey[colourBy];
+        const v = f === b - 1 ? at(x.values, j, b) : f === d - 1 ? at(x.values, j, f)
+          : at(x.values, j, f) * (1 - w) + at(x.values, j, f1) * w;
+        const u = x.diverging ? 0.5 + 0.5 * (v < 0 ? -v / x.lo : v / x.hi) : (v - x.lo) / (x.hi - x.lo);
+        col.copy(ramp(x.stops, u));
       }
       crown.setColorAt(c, col);
       c++;
@@ -421,15 +442,19 @@ function drawPanel({ stats, f, w }) {
   lt.style.display = top > 0 ? "" : "none";
 }
 
+const sig = x => Number(x.toPrecision(3)).toLocaleString();
 function showRamp() {
   const box = document.getElementById("ramp");
   box.hidden = colourBy === "species";
   if (box.hidden) return;
-  const r = RAMPS[colourBy];
+  const x = extraByKey[colourBy];
+  const r = x ? { title: x.label, stops: x.stops, lo: sig(x.lo), hi: sig(x.hi) }
+    : colourBy === "light" ? RAMPS.light
+    : { ...RAMPS.height, lo: "0 m", hi: `${fmt(hTop, 0)} m` };
   document.getElementById("ramp-title").textContent = r.title;
   document.getElementById("ramp-bar").style.background = `linear-gradient(90deg, ${r.stops.join(",")})`;
-  document.getElementById("ramp-lo").textContent = colourBy === "light" ? r.lo : "0 m";
-  document.getElementById("ramp-hi").textContent = colourBy === "light" ? r.hi : `${fmt(hTop, 0)} m`;
+  document.getElementById("ramp-lo").textContent = r.lo;
+  document.getElementById("ramp-hi").textContent = r.hi;
 }
 
 // ---- time and controls ---------------------------------------------------
@@ -461,6 +486,14 @@ function setPlaying(p) {
 }
 playBtn.addEventListener("click", () => setPlaying(!playing));
 scrub.addEventListener("input", () => { setPlaying(false); setTime(+scrub.value); });
+const extraByKey = Object.fromEntries(extras.map(x => [x.key, x]));
+const seg = document.querySelector('.seg[role="radiogroup"]');
+for (const x of extras) {
+  const label = document.createElement("label");
+  label.innerHTML = `<input type="radio" name="colour" id="col-${x.key}" value="${x.key}"><span></span>`;
+  label.querySelector("span").textContent = x.label;
+  seg.append(label);
+}
 document.querySelectorAll('input[name="colour"]').forEach(el =>
   el.addEventListener("change", () => { colourBy = el.value; showRamp(); dirty = true; }));
 document.getElementById("tile").addEventListener("change", e => {

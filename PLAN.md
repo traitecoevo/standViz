@@ -12,20 +12,20 @@
 
 ## Invariants (a future edit could break these without noticing)
 
-- **Geometry is the model, not an artist's guess.** Leaf area, stem diameter and crown shape come from the strategy's own allometry: FF16 `area_leaf = (h / a_l1)^(1 / a_l2)`, stem area = sapwood + bark + heartwood, and crown cross-section area at height `z` proportional to the Yokozawa leaf density `q(z, H)`. A test checks the R allometry against `plant`'s own `Individual`. The only free visual parameter is leaf area per crown volume (`lad`).
-- **Trees are persistent.** Individual `k` of cohort interval `i` sits at a fixed fraction `v` between nodes `i` and `i + 1`, so it grows smoothly. It is alive while its rank is within the interval's current count, so it never comes back after dying.
-- **Counts follow the model.** The interval count at time `t` is its count at closure times `exp(-(m̄(t) - m̄(t_close)))`, with `m̄` the mean cumulative mortality of its two bounding nodes. That makes it non-increasing by construction. Rounding is stochastic, with one fixed draw per interval, so it is unbiased and stable over time.
-- **Density is log-linear in height within an interval**, for both the closure count and the draw of `v`. Just after an interval forms, density can fall several hundredfold from its seedling end; a trapezium plus an even spread put about 45% too many trees above 1 m at 42 years in the demo. A test checks realised counts above a height threshold against the model's at several times.
+- **Sampling is plant's.** `realise_stand()` draws trees with `plant::sample_size_distribution()` (traitecoevo/plant#722, fixed in #724), which needs a run carried in birth date. Trees persist through frames and never revive, and at every frame their number is Poisson about the model's density. standviz does no sampling of its own. A test checks counts above `min_height` against `plant::integrate_over_size_distribution(lower = min_height)`.
+- **Geometry is the model, not an artist's guess.** Leaf area, stem diameter and every other size come from the strategy's own allometry through `plant::expand_state()`; standviz keeps all of its columns. Crown cross-section area at height `z` is proportional to the Yokozawa leaf density `q(z, H)`. The only free visual parameter is leaf area per crown volume (`lad`).
+- **Drawn sizes never shrink.** Height, crown scale and stem diameter take their running maximum per tree, because interpolation across a changing set of nodes can lower a followed height by under a millimetre. Every other column is plant's value.
 - **Crowns are drawn down to the height holding 95% of the leaf area.** Below that the Yokozawa profile is a long, near-empty tail that reads as a funnel.
 - **Positions are a seeded visual device.** `plant` is spatially implicit. Positions come from best-candidate sampling on a torus, spacing the larger trees by crown size, so stands tile seamlessly. Docs and the viewer must not imply they come from the model.
-- **The viewer bundle is the renderer contract**: frames, light profile, per-species node trajectories, and static tree records (species, interval, `v`, `x`, `y`, birth and death frame). `stand_long()` expands it into a long per-tree-per-frame table for renderers that want that.
+- **The viewer bundle is the renderer contract**: frames, light profile, static tree records (species, birth date, `x`, `y`, first frame, frame count, offset), and each tree's height, crown scale and stem diameter at every visible frame as 16-bit integers spanning each variable's range, plus any `colour_by` variables. The page grows with tree-frames, by six bytes for the sizes and two for each `colour_by` variable, so `min_height` defaults to 1.5 m: the 100-year demo, with the two default colour variables, is then about 10 MB. At 1 m it would pass the 16 MB limit of a claude.ai page. `stand_long()` gives the same rows at full precision.
 
 ## Open, in order
 
 0. **New name.** `standviz` is a placeholder. The package and the GitHub repo (`traitecoevo/standViz`) will be renamed to something that evokes trees and visualisation; the name is undecided. The 2013–14 issues about the old code were closed on 2026-11-04.
 
 1. ~~First PR: package scaffold, `realise_stand()`, `stand_long()`, `write_viewer()`, the three.js stand viewer, and a demo FF16 two-species run (`inst/examples/make_demo.R`).~~ Done.
-2. Blender script reading `stand_long()` output (`inst/blender/`).
-3. `realise_landscape()` and a landscape view with LOD (impostors far away).
-4. TF24 support: allometry plus colour by water potential or leaf temperature.
-5. Stochastic `plant` runs mapped directly to individuals, skipping the sampling.
+2. ~~Use plant's sampler and allometry.~~ Done: `plant::sample_size_distribution()` and `plant::expand_state()`.
+3. Blender script reading `stand_long()` output (`inst/blender/`).
+4. `realise_landscape()` and a landscape view with LOD (impostors far away).
+5. TF24 support: crown shape (`expand_state()` already covers its allometry) plus colour by water potential or leaf temperature.
+6. Stochastic `plant` runs mapped directly to individuals, skipping the sampling.

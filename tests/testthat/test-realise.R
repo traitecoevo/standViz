@@ -1,15 +1,16 @@
-test_that("realised tree counts follow the model's size distribution", {
+test_that("realised tree counts follow plant's own integral above the threshold", {
   skip_if_not_installed("plant")
   res <- ff16_run()
-  stand <- realise_stand(res, side = 20, min_height = 2, seed = 3)
-  long <- stand_long(stand)
-  for (t in c(10, 22, 40)) {
+  stand <- realise_stand(res, side = 30, min_height = 2, seed = 3)
+  totals <- plant::integrate_over_size_distribution(res$species, lower = 2)
+  for (t in c(10, 20, 40)) {
     f <- which.min(abs(stand$times - t))
     for (s in 1:2) {
-      expected <- model_count_above(res, as.character(s), stand$times[f], 2) * 400
-      got <- sum(long$frame == f & long$species == s)
-      ## Within 15%, or Poisson noise when the count is small.
-      expect_lte(abs(got - expected), max(0.15 * expected, 3 * sqrt(expected) + 1))
+      ## Frames fall between collected steps; take plant's total at the nearest.
+      ts <- totals[totals$species == s, ]
+      expected <- ts$density[which.min(abs(ts$time - stand$times[f]))] * 900
+      got <- sum(stand$rows$frame == f & stand$trees$species[stand$rows$tree] == s)
+      expect_lte(abs(got - expected), max(0.1 * expected, 4 * sqrt(expected) + 2))
     }
   }
 })
@@ -26,7 +27,8 @@ test_that("trees persist: they only grow, and never come back", {
   expect_true(all(diff(long$frame)[same] == 1))
   ## ... and its height never falls.
   expect_true(all(diff(long$height)[same] >= -1e-9))
-  expect_true(all(long$height >= stand$meta$min_height - 1e-9))
+  expect_true(all(long$height >= stand$meta$min_height))
+  expect_equal(tabulate(long$tree, nrow(tr)), tr$death_frame - tr$birth_frame)
 })
 
 test_that("positions are seeded and leave the caller's random state alone", {
