@@ -48,7 +48,8 @@ realise_stand <- function(results, side = 20, frames_per_year = 2,
     ## Height never falls, so a tree's visible frames are one unbroken run.
     rows$frame <- match(rows$time, times)
     rows <- rows[order(rows$frame, rows$species, rows$individual), ]
-    rows$tree <- match(rows$individual, unique(rows$individual))
+    key <- paste(rows$species, rows$individual)
+    rows$tree <- match(key, unique(key))
     rows <- rows[order(rows$tree, rows$frame), ]
     first <- !duplicated(rows$tree)
     last <- !duplicated(rows$tree, fromLast = TRUE)
@@ -90,7 +91,7 @@ print.standviz_stand <- function(x, ...) {
               x$meta$model, nrow(x$species), x$meta$side, x$meta$side))
   cat(sprintf("  %d frames over %g years; %d trees ever, up to %d at once\n",
               length(x$times), max(x$times), nrow(x$trees),
-              max(tabulate(x$rows$frame))))
+              max(c(0L, tabulate(x$rows$frame)))))
   invisible(x)
 }
 

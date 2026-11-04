@@ -278,7 +278,8 @@ const bySpecies = D.species.map(() => []);
 for (let j = 0; j < nTrees; j++) bySpecies[T.species[j]].push(j);
 const capacity = bySpecies.map(list => {
   const delta = new Int32Array(nF + 2);
-  for (const j of list) { delta[Math.max(T.birth[j] - 1, 0)]++; delta[Math.min(T.death[j], nF) + 1]--; }
+  // A tree is drawn from the frame before its first (growing in) to its last.
+  for (const j of list) { delta[Math.max(T.birth[j] - 1, 0)]++; delta[Math.min(T.death[j], nF)]--; }
   let run = 0, best = 1;
   for (let f = 0; f <= nF; f++) { run += delta[f]; best = Math.max(best, run); }
   return best;
@@ -388,7 +389,8 @@ function update(t) {
         const x = extraByKey[colourBy];
         const v = f === b - 1 ? at(x.values, j, b) : f === d - 1 ? at(x.values, j, f)
           : at(x.values, j, f) * (1 - w) + at(x.values, j, f1) * w;
-        const u = x.diverging ? 0.5 + 0.5 * (v < 0 ? -v / x.lo : v / x.hi) : (v - x.lo) / (x.hi - x.lo);
+        const u = x.diverging ? 0.5 + 0.5 * (v < 0 ? -v / x.lo : v / x.hi)
+          : x.hi > x.lo ? (v - x.lo) / (x.hi - x.lo) : 0.5;
         col.copy(ramp(x.stops, u));
       }
       crown.setColorAt(c, col);

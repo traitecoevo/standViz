@@ -48,8 +48,9 @@ light_at <- function(light, frame, z) {
 #'   from disk. `FALSE` writes the bare fragment, for hosts that supply the
 #'   document (such as a claude.ai artifact).
 #' @param colour_by Further state variables the viewer can colour trees by, as
-#'   a named character vector of column names in `stand_long()` with the names
-#'   as button labels. Each adds two bytes per tree per frame to the page.
+#'   a named character vector of columns of `stand$rows` (every state variable
+#'   from plant and [plant::expand_state()]) with the names as button labels.
+#'   Each adds two bytes per tree per frame to the page.
 #' @return `file`, invisibly.
 #' @export
 write_viewer <- function(stand, file, title = "Stand through time",

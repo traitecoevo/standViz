@@ -24,3 +24,23 @@ test_that("write_viewer embeds the stand in one page", {
   write_viewer(stand, file, standalone = FALSE)
   expect_false(grepl("<!doctype", paste(readLines(file), collapse = "\n"), fixed = TRUE))
 })
+
+test_that("each tree's rows sit together from its offset, one per frame", {
+  skip_if_not_installed("plant")
+  stand <- realise_stand(ff16_run(), side = 10, min_height = 2)
+  data <- jsonlite::fromJSON(stand_json(stand))
+  tr <- data$trees
+  for (j in c(1, 7, length(tr$frames))) {
+    i <- tr$offset[j] + seq_len(tr$frames[j])
+    expect_true(all(stand$rows$tree[i] == j))
+    expect_equal(stand$rows$frame[i] - 1, tr$birth[j] + seq_len(tr$frames[j]) - 1)
+  }
+  expect_equal(tr$offset[-1], cumsum(tr$frames)[-length(tr$frames)])
+})
+
+test_that("a stand with no tree tall enough still prints and writes", {
+  skip_if_not_installed("plant")
+  stand <- realise_stand(ff16_run(), side = 5, min_height = 1000)
+  expect_equal(nrow(stand$trees), 0)
+  expect_output(print(stand), "up to 0 at once")
+})
