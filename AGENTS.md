@@ -1,28 +1,28 @@
 # `standviz` — developer guide for agents
 
-`standviz` (R package name **`trees3D`**) makes **3D plots of individual trees and stands**
-in R using `rgl` (openGL). Given crown shapes, tree dimensions, and locations it renders a
-stand in 3D; the stand-plotting algorithm was adapted from the
-[Maeswrap](https://bitbucket.org/remkoduursma/maeswrap) package. It can be used to visualise
-output from the [`plant`](https://github.com/traitecoevo/plant) model.
+`standviz` turns `plant` output into 3D views: it draws explicit, persistent trees from a run's cohort size distributions (`realise_stand()`), and writes an interactive three.js page of the stand growing through time (`write_viewer()`). `standviz` is a working name; a rename is planned.
 
-> **Note:** repo is `standviz`; the package is `trees3D`. It is old (circa 2016,
-> `RoxygenNote 5.0.1`) and largely dormant — modernise build tooling if you do substantial work.
+**Read [`PLAN.md`](PLAN.md) first.** It holds the decisions and the invariants a change could break without noticing: geometry comes from the model's allometry, trees persist, counts follow the model, and positions are a visual device, not model output.
 
 ## Layout
 
-- `R/` — package functions; `man/` — generated docs; `tests/` — tests; `examples.R` — usage.
-- Imports `rgl`; Suggests `testthat`, `devtools`.
+- `R/allometry.R`: FF16 geometry (leaf area, stem diameter, crown profile), mirroring `plant`'s `ff16_strategy.h`.
+- `R/realise.R`: `realise_stand()`, which builds node trajectories at frame times, trees per node interval, positions and the light profile.
+- `R/output.R`: `stand_long()`, `write_viewer()` and the viewer's JSON contract (`stand_json()`).
+- `inst/viewer/viewer.html`: the viewer template. It is a page fragment (no `<html>`/`<head>`); `write_viewer(standalone = TRUE)` wraps it. Tokens `__STAND_TITLE__` and `__STAND_DATA__` are filled in.
+- `inst/examples/make_demo.R`: the two-species FF16 demo.
 
-## Build & test (Makefile)
+## Build & test
 
-- `make install` (the default `all`), `make build`, `make check` — standard R package targets.
-- `make roxygen` / `make autodoc` — regenerate docs (don't hand-edit `man/` or `NAMESPACE`).
-- `make test` — run tests; `make vignettes` — build `vignettes/introduction.Rmd`.
+- `make install` (runs roxygen first), `make test`, `make check`, `make demo`.
+- Tests need `plant`. Build it from `develop`; the site-library copy can lag.
+- To look at the viewer, write a page and screenshot it with headless Chrome: `--headless=new --use-angle=swiftshader --enable-unsafe-swiftshader --screenshot`. Headless Chrome will not go narrower than about 500 px, so a narrower screenshot is cropped rather than reflowed.
 
 ## Gotchas
 
-- `rgl`/openGL needs a working graphics backend; headless CI may need a virtual framebuffer.
+- `plant` marks a node with no survivors with infinite cumulative mortality; `realise_species()` caps it before splining.
+- Just after an interval forms, density can fall several hundredfold across it. Counts and within-interval positions therefore use a log-linear density, not a trapezium; switching back overcounts the tall end of an interval.
+- Tree placement is quadratic in the trees it spaces, so only large crowns are spaced from one another (see `place_trees()`).
 
 ## Plant family
 

@@ -1,0 +1,517 @@
+<title>__STAND_TITLE__</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;650&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the stand fills the window; a readout card, a legend-and-light panel
+   and a timeline strip float over it. Below 760px they stack under the scene. */
+:root {
+  --bg: #f4f8f3;
+  --fg: #12261a;
+  --muted: #587063;
+  --accent: #2c7a48;
+  --line: #d3e2d6;
+  --panel: rgba(250, 253, 249, 0.86);
+  --sky-top: #dcebf2;
+  --sky-low: #f4f8f3;
+  --display: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --body: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1611; --fg: #e2eee5; --muted: #8fa898; --accent: #6cc28a;
+    --line: #22362a; --panel: rgba(13, 22, 17, 0.82);
+    --sky-top: #0f1d24; --sky-low: #0d1611; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1611; --fg: #e2eee5; --muted: #8fa898; --accent: #6cc28a;
+  --line: #22362a; --panel: rgba(13, 22, 17, 0.82);
+  --sky-top: #0f1d24; --sky-low: #0d1611; color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14px; }
+.app { position: relative; height: 100%; display: grid; grid-template-rows: 1fr auto; }
+.stage { position: relative; min-height: 0; overflow: hidden;
+  background: linear-gradient(var(--sky-top), var(--sky-low)); }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.stage canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.readout { position: absolute; top: max(16px, env(safe-area-inset-top, 0px));
+  left: max(16px, env(safe-area-inset-left, 0px)); padding: 14px 18px; display: grid; gap: 4px; max-width: 22rem; }
+.eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 0; font-family: var(--display); font-weight: 650; font-size: 1.15rem; line-height: 1.2; text-wrap: balance; }
+.age { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; }
+.age b { font-family: var(--mono); font-weight: 500; font-size: 2.4rem; line-height: 1; font-variant-numeric: tabular-nums; color: var(--accent); }
+.age span { color: var(--muted); }
+
+.side { position: absolute; top: max(16px, env(safe-area-inset-top, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px)); width: 19rem; padding: 14px 16px; display: grid; gap: 14px; }
+.side h2 { margin: 0 0 6px; font-size: 11px; font-family: var(--mono); font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { text-align: right; white-space: nowrap; padding-left: 10px; font-weight: 400; font-size: 11px; color: var(--muted); padding: 0 0 4px; }
+th:first-child, td:first-child { text-align: left; }
+td { padding: 3px 0 3px 10px; text-align: right; white-space: nowrap; vertical-align: top; font-family: var(--mono); font-size: 12.5px; }
+td:first-child { font-family: var(--body); font-size: 13px; padding-left: 0; white-space: normal; }
+th:first-child { padding-left: 0; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.trait { display: block; color: var(--muted); font-size: 11px; font-family: var(--mono); padding-left: 16px; }
+.light svg { width: 100%; max-width: 360px; height: auto; display: block; }
+.light text { fill: var(--muted); font: 10px var(--mono); }
+.light .axis { stroke: var(--line); }
+.light .curve { stroke: var(--accent); fill: none; stroke-width: 2; }
+.light .area { fill: var(--accent); opacity: 0.12; }
+.light .top { stroke: var(--muted); stroke-dasharray: 3 3; }
+.ramp { height: 8px; border-radius: 4px; margin-top: 4px; }
+.ramp-labels { display: flex; justify-content: space-between; font: 10px var(--mono); color: var(--muted); }
+
+.strip { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px;
+  padding-block: 12px; padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--line); background: var(--bg); }
+.play { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--accent); color: var(--bg);
+  display: grid; place-items: center; cursor: pointer; flex: none; }
+.play:focus-visible, .seg input:focus-visible + span, select:focus-visible, .check input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.play svg { width: 16px; height: 16px; fill: currentColor; }
+.time { flex: 1 1 260px; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.time input { flex: 1; min-width: 0; accent-color: var(--accent); }
+.time output { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--muted); min-width: 7ch; text-align: right; }
+.ctl { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12.5px; }
+select { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg label { cursor: pointer; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg span { display: block; padding: 5px 10px; color: var(--fg); font-size: 12.5px; }
+.seg input:checked + span { background: var(--accent); color: var(--bg); }
+.check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--fg); font-size: 12.5px; }
+.check input { accent-color: var(--accent); }
+.note { flex-basis: 100%; color: var(--muted); font-size: 12px; margin: 0; }
+
+@media (max-width: 760px) {
+  html, body { height: auto; }
+  .app { height: auto; display: block; }
+  .stage { height: 62vh; min-height: 320px; }
+  .readout { padding: 10px 12px; }
+  .age b { font-size: 1.8rem; }
+  .side { position: static; width: auto; margin: 12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); backdrop-filter: none; }
+}
+</style>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <div class="readout card">
+      <div class="eyebrow" id="eyebrow">plant</div>
+      <h1>__STAND_TITLE__</h1>
+      <div class="age"><b id="age">0.0</b><span>years since disturbance</span></div>
+    </div>
+  </div>
+  <aside class="side card" id="side">
+    <section>
+      <h2>Trees taller than <span id="minh">1</span> m</h2>
+      <table>
+        <thead><tr><th>Species</th><th>stems/ha</th><th>BA m²/ha</th><th>top m</th></tr></thead>
+        <tbody id="legend"></tbody>
+      </table>
+    </section>
+    <section class="light">
+      <h2>Canopy openness by height</h2>
+      <svg id="lightchart" viewBox="0 0 260 150" role="img" aria-label="Fraction of full light reaching each height"></svg>
+    </section>
+    <section id="ramp" hidden>
+      <h2 id="ramp-title">Colour</h2>
+      <div class="ramp" id="ramp-bar"></div>
+      <div class="ramp-labels"><span id="ramp-lo"></span><span id="ramp-hi"></span></div>
+    </section>
+  </aside>
+  <div class="strip">
+    <button class="play" id="play" type="button" aria-label="Play">
+      <svg viewBox="0 0 16 16" id="play-icon"><path d="M4 2l10 6-10 6z"/></svg>
+    </button>
+    <div class="time">
+      <input type="range" id="scrub" min="0" max="1" step="0.01" value="0" aria-label="Years since disturbance">
+      <output id="scrub-out" for="scrub">0 yr</output>
+    </div>
+    <label class="ctl" for="speed">Speed
+      <select id="speed">
+        <option value="2">2 yr/s</option>
+        <option value="5" selected>5 yr/s</option>
+        <option value="10">10 yr/s</option>
+      </select>
+    </label>
+    <div class="ctl">Colour
+      <div class="seg" role="radiogroup" aria-label="Colour trees by">
+        <label><input type="radio" name="colour" id="col-species" value="species" checked><span>Species</span></label>
+        <label><input type="radio" name="colour" id="col-light" value="light"><span>Light</span></label>
+        <label><input type="radio" name="colour" id="col-height" value="height"><span>Height</span></label>
+      </div>
+    </div>
+    <label class="check" for="tile"><input type="checkbox" id="tile"> Repeat patch</label>
+    <label class="check" for="shadows"><input type="checkbox" id="shadows" checked> Shadows</label>
+    <p class="note" id="note">Tree sizes and numbers come from the model's size distributions. Positions are illustrative: the model has no space.</p>
+  </div>
+</div>
+
+<script type="application/json" id="stand-data">__STAND_DATA__</script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const D = JSON.parse(document.getElementById("stand-data").textContent);
+const nF = D.times.length;
+const side = D.meta.side;
+const area = side * side;
+const SPECIES_COLOURS = ["#9bc53d", "#2f6e43", "#d0922f", "#4f86ae", "#8c5aa8", "#c2554b"];
+const RAMPS = {
+  light: { stops: ["#1e3a2b", "#4f8c46", "#e4e86c"], lo: "deep shade", hi: "full sun", title: "Light at crown centre" },
+  height: { stops: ["#264d63", "#3f9068", "#d9d56a"], title: "Height" },
+};
+
+// Flatten each species' node trajectories (frame rows x node columns) for
+// fast lookup; null (node not yet born) becomes NaN.
+const flat = rows => {
+  const n = rows[0].length, out = new Float32Array(rows.length * n);
+  rows.forEach((r, f) => r.forEach((v, i) => { out[f * n + i] = v === null ? NaN : v; }));
+  return { n, data: out };
+};
+const nodes = D.nodes.map(s => ({
+  height: flat(s.height), crown: flat(s.crown_scale), stem: flat(s.stem_diameter),
+}));
+const lightGrid = D.light.height;
+const lightVal = flat(D.light.value);
+const T = D.trees;
+const nTrees = T.v.length;
+const hTop = lightGrid[lightGrid.length - 1];
+
+document.getElementById("eyebrow").textContent =
+  `plant · ${D.meta.model} · ${side} × ${side} m patch`;
+document.getElementById("minh").textContent = D.meta.min_height;
+
+// ---- scene ------------------------------------------------------------
+const stage = document.getElementById("stage");
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.domElement.tabIndex = 0;
+renderer.domElement.setAttribute("aria-label", "3D view of the stand. Drag to orbit, scroll or pinch to zoom.");
+stage.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 2000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, hTop * 0.3, 0);
+// Opening view: further back on a tall, narrow screen so the patch fits across.
+function frameCamera(aspect) {
+  const back = Math.max(1, 1.3 / aspect) ** 0.8;
+  camera.position.set(side * 1.45 * back, (hTop * 0.8 + 8) * back, side * 1.75 * back);
+}
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.495;
+controls.minDistance = 3;
+controls.maxDistance = side * 8;
+
+scene.add(new THREE.HemisphereLight(0xeaf4ff, 0x40513a, 1.1));
+const sun = new THREE.DirectionalLight(0xfff6e2, 2.2);
+sun.position.set(side * 0.8, side * 2.2, side * 0.5);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.0005;
+scene.add(sun, sun.target);
+const fitShadow = reach => {
+  const c = sun.shadow.camera;
+  c.left = c.bottom = -reach; c.right = c.top = reach; c.near = 1; c.far = side * 6;
+  c.updateProjectionMatrix();
+};
+fitShadow(side * 0.8);
+
+const groundMat = new THREE.MeshLambertMaterial({ color: 0x7a9a4a });
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(side, side), groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+const edge = new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.BoxGeometry(side, 0.001, side)),
+  new THREE.LineBasicMaterial({ color: 0x5c7a52 }));
+scene.add(edge);
+
+// Crown: the species' crown profile (cross-section area proportional to leaf
+// area at that height) turned about the stem. Unit height, so instances scale
+// by (crown_scale, height, crown_scale).
+const crownGeom = D.species.map(sp => {
+  const pts = sp.profile.u.map((u, i) => new THREE.Vector2(sp.profile.r[i], u));
+  const g = new THREE.LatheGeometry(pts, 12);
+  g.computeVertexNormals();
+  return g;
+});
+const stemGeom = new THREE.CylinderGeometry(0.32, 0.5, 1, 7, 1, true);
+stemGeom.translate(0, 0.5, 0);
+
+// Each species' trees, and how many instances it ever needs at once.
+const bySpecies = D.species.map(() => []);
+for (let j = 0; j < nTrees; j++) bySpecies[T.species[j]].push(j);
+const capacity = bySpecies.map(list => {
+  const delta = new Int32Array(nF + 2);
+  for (const j of list) { delta[Math.max(T.birth[j] - 1, 0)]++; delta[Math.min(T.death[j], nF) + 1]--; }
+  let run = 0, best = 1;
+  for (let f = 0; f <= nF; f++) { run += delta[f]; best = Math.max(best, run); }
+  return best;
+});
+
+const crownMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+const stemMat = new THREE.MeshLambertMaterial({ color: 0x6b5440 });
+const meshes = D.species.map((sp, k) => {
+  const crown = new THREE.InstancedMesh(crownGeom[k], crownMat, capacity[k]);
+  const stem = new THREE.InstancedMesh(stemGeom, stemMat, capacity[k]);
+  for (const m of [crown, stem]) {
+    m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false;
+    m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    scene.add(m);
+  }
+  crown.setColorAt(0, new THREE.Color(1, 1, 1));
+  crown.instanceColor.setUsage(THREE.DynamicDrawUsage);
+  return { crown, stem };
+});
+
+// Repeat patch: eight neighbours that share the centre's instance buffers.
+// Positions were drawn on a torus, so the copies join without a seam.
+const tiles = new THREE.Group();
+for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+  if (a === 0 && b === 0) continue;
+  const g = new THREE.Group();
+  g.position.set(a * side, 0, b * side);
+  const gr = ground.clone(); gr.material = groundMat; g.add(gr);
+  for (const m of meshes) for (const key of ["crown", "stem"]) {
+    const src = m[key];
+    const copy = new THREE.InstancedMesh(src.geometry, src.material, 1);
+    copy.instanceMatrix = src.instanceMatrix;
+    if (src.instanceColor) copy.instanceColor = src.instanceColor;
+    copy.castShadow = copy.receiveShadow = true;
+    copy.frustumCulled = false;
+    copy.userData.src = src;
+    g.add(copy);
+  }
+  tiles.add(g);
+}
+tiles.visible = false;
+scene.add(tiles);
+
+// ---- state at a fractional frame -----------------------------------------
+const at = (m, f, i, v) => m.data[f * m.n + i] * (1 - v) + m.data[f * m.n + i + 1] * v;
+const lightAt = (f, w, z) => {
+  const g = lightGrid, step = g[1] - g[0];
+  const p = Math.min(Math.max((z - g[0]) / step, 0), g.length - 1.000001);
+  const lo = Math.floor(p), r = p - lo, n = lightVal.n, d = lightVal.data;
+  const f1 = Math.min(f + 1, nF - 1);
+  const v0 = d[f * n + lo] * (1 - r) + d[f * n + lo + 1] * r;
+  const v1 = d[f1 * n + lo] * (1 - r) + d[f1 * n + lo + 1] * r;
+  return v0 * (1 - w) + v1 * w;
+};
+const ramp = (stops, x) => {
+  x = Math.min(Math.max(x, 0), 1) * (stops.length - 1);
+  const i = Math.min(Math.floor(x), stops.length - 2);
+  return new THREE.Color(stops[i]).lerp(new THREE.Color(stops[i + 1]), x - i);
+};
+const speciesCol = SPECIES_COLOURS.map(c => new THREE.Color(c));
+
+let colourBy = "species";
+const mat4 = new THREE.Matrix4(), pos = new THREE.Vector3(), scl = new THREE.Vector3();
+const quat = new THREE.Quaternion(), noTurn = new THREE.Quaternion(), axis = new THREE.Vector3();
+const col = new THREE.Color();
+
+function update(t) {
+  const f = Math.min(Math.floor(t), nF - 1), w = t - f, f1 = Math.min(f + 1, nF - 1);
+  const stats = [];
+  D.species.forEach((sp, k) => {
+    const { crown, stem } = meshes[k], nd = nodes[k];
+    let c = 0, n = 0, ba = 0, top = 0;
+    for (const j of bySpecies[k]) {
+      const b = T.birth[j], d = T.death[j];
+      if (f < b - 1 || f >= d) continue;
+      const i = T.interval[j], v = T.v[j];
+      let h, cs, sd, grow = 1, fall = 0;
+      if (f === b - 1) {                       // appears during this frame
+        h = at(nd.height, b, i, v); cs = at(nd.crown, b, i, v); sd = at(nd.stem, b, i, v);
+        grow = w;
+      } else if (f === d - 1 && d < nF) {      // dies during this frame: it falls
+        h = at(nd.height, f, i, v); cs = at(nd.crown, f, i, v); sd = at(nd.stem, f, i, v);
+        fall = w;
+      } else {
+        h = at(nd.height, f, i, v) * (1 - w) + at(nd.height, f1, i, v) * w;
+        cs = at(nd.crown, f, i, v) * (1 - w) + at(nd.crown, f1, i, v) * w;
+        sd = at(nd.stem, f, i, v) * (1 - w) + at(nd.stem, f1, i, v) * w;
+      }
+      if (!(h > 0)) continue;
+      if (fall === 0 && grow === 1) { n++; ba += Math.PI * sd * sd / 4; top = Math.max(top, h); }
+      pos.set(T.x[j] - side / 2, 0, T.y[j] - side / 2);
+      if (fall > 0) {
+        const phi = j * 2.39996;
+        axis.set(Math.cos(phi), 0, Math.sin(phi));
+        quat.setFromAxisAngle(axis, fall * fall * Math.PI * 0.48);
+      } else quat.copy(noTurn);
+      scl.set(cs * grow, h * grow, cs * grow);
+      crown.setMatrixAt(c, mat4.compose(pos, quat, scl));
+      scl.set(sd * grow, h * grow, sd * grow);
+      stem.setMatrixAt(c, mat4.compose(pos, quat, scl));
+      if (colourBy === "species") {
+        col.copy(speciesCol[k % speciesCol.length]).multiplyScalar(0.62 + 0.38 * lightAt(f, w, h * sp.eta_c));
+      } else if (colourBy === "light") {
+        col.copy(ramp(RAMPS.light.stops, lightAt(f, w, h * sp.eta_c)));
+      } else {
+        col.copy(ramp(RAMPS.height.stops, h / hTop));
+      }
+      crown.setColorAt(c, col);
+      c++;
+    }
+    crown.count = stem.count = c;
+    crown.instanceMatrix.needsUpdate = stem.instanceMatrix.needsUpdate = true;
+    crown.instanceColor.needsUpdate = true;
+    stats.push({ n, ba, top });
+  });
+  for (const g of tiles.children) for (const m of g.children) if (m.userData.src) m.count = m.userData.src.count;
+  const g0 = lightAt(f, w, 0);
+  groundMat.color.copy(ramp(["#33402a", "#5d7a3c", "#93ad57"], g0));
+  return { stats, f, w };
+}
+
+// ---- panel -----------------------------------------------------------
+const legend = document.getElementById("legend");
+legend.innerHTML = D.species.map((sp, k) => `
+  <tr><td><span class="sw" style="background:${SPECIES_COLOURS[k % SPECIES_COLOURS.length]}"></span>Species ${sp.id}
+    <span class="trait">${sp.label}</span></td>
+    <td id="n${k}">0</td><td id="ba${k}">0</td><td id="top${k}">0</td></tr>`).join("");
+const fmt = (x, d) => x.toLocaleString(undefined, { maximumFractionDigits: d, minimumFractionDigits: d });
+
+const svg = document.getElementById("lightchart");
+const W = 260, H = 150, L = 30, R = 8, Tp = 8, B = 24;
+const xs = x => L + x * (W - L - R), ys = z => H - B - (z / hTop) * (H - B - Tp);
+const tickStep = hTop > 30 ? 10 : 5;
+let axes = `<line class="axis" x1="${L}" y1="${H - B}" x2="${W - R}" y2="${H - B}"/>
+  <line class="axis" x1="${L}" y1="${Tp}" x2="${L}" y2="${H - B}"/>`;
+for (const x of [0, 0.5, 1]) axes += `<text x="${xs(x)}" y="${H - B + 13}" text-anchor="middle">${x}</text>`;
+for (let z = 0; z <= hTop; z += tickStep) axes += `<text x="${L - 5}" y="${ys(z) + 3}" text-anchor="end">${z}</text>`;
+axes += `<text x="${L - 5}" y="${Tp - 0}" text-anchor="end" dy="-1">m</text>`;
+svg.innerHTML = axes + `<path class="area" id="larea"/><path class="curve" id="lcurve"/><line class="top" id="ltop" x1="${L}" x2="${W - R}"/>`;
+
+function drawPanel({ stats, f, w }) {
+  stats.forEach((s, k) => {
+    document.getElementById(`n${k}`).textContent = fmt(s.n / area * 1e4, 0);
+    document.getElementById(`ba${k}`).textContent = fmt(s.ba / area * 1e4, 1);
+    document.getElementById(`top${k}`).textContent = s.top > 0 ? fmt(s.top, 1) : "–";
+  });
+  let d = "";
+  for (let i = 0; i < lightGrid.length; i++) {
+    d += `${i ? "L" : "M"}${xs(lightAt(f, w, lightGrid[i])).toFixed(1)},${ys(lightGrid[i]).toFixed(1)}`;
+  }
+  document.getElementById("lcurve").setAttribute("d", d);
+  document.getElementById("larea").setAttribute("d", `${d}L${xs(0)},${ys(hTop)}L${xs(0)},${ys(0)}Z`);
+  const top = Math.max(...stats.map(s => s.top));
+  const lt = document.getElementById("ltop");
+  lt.setAttribute("y1", ys(top)); lt.setAttribute("y2", ys(top));
+  lt.style.display = top > 0 ? "" : "none";
+}
+
+function showRamp() {
+  const box = document.getElementById("ramp");
+  box.hidden = colourBy === "species";
+  if (box.hidden) return;
+  const r = RAMPS[colourBy];
+  document.getElementById("ramp-title").textContent = r.title;
+  document.getElementById("ramp-bar").style.background = `linear-gradient(90deg, ${r.stops.join(",")})`;
+  document.getElementById("ramp-lo").textContent = colourBy === "light" ? r.lo : "0 m";
+  document.getElementById("ramp-hi").textContent = colourBy === "light" ? r.hi : `${fmt(hTop, 0)} m`;
+}
+
+// ---- time and controls ---------------------------------------------------
+const scrub = document.getElementById("scrub"), scrubOut = document.getElementById("scrub-out");
+const ageEl = document.getElementById("age"), playBtn = document.getElementById("play");
+scrub.max = nF - 1;
+const yearAt = t => {
+  const f = Math.min(Math.floor(t), nF - 1), f1 = Math.min(f + 1, nF - 1);
+  return D.times[f] + (D.times[f1] - D.times[f]) * (t - f);
+};
+const frameDt = D.times[1] - D.times[0];
+let t = Math.min(Math.round(40 / frameDt), nF - 1);
+let playing = false, dirty = true;
+
+function setTime(x) {
+  t = Math.min(Math.max(x, 0), nF - 1);
+  scrub.value = t;
+  const yr = yearAt(t);
+  ageEl.textContent = fmt(yr, 1);
+  scrubOut.textContent = `${fmt(yr, 0)} yr`;
+  dirty = true;
+}
+const icon = document.getElementById("play-icon");
+function setPlaying(p) {
+  playing = p;
+  icon.innerHTML = p ? '<path d="M3 2h4v12H3zM9 2h4v12H9z"/>' : '<path d="M4 2l10 6-10 6z"/>';
+  playBtn.setAttribute("aria-label", p ? "Pause" : "Play");
+  if (p && t >= nF - 1) setTime(0);
+}
+playBtn.addEventListener("click", () => setPlaying(!playing));
+scrub.addEventListener("input", () => { setPlaying(false); setTime(+scrub.value); });
+document.querySelectorAll('input[name="colour"]').forEach(el =>
+  el.addEventListener("change", () => { colourBy = el.value; showRamp(); dirty = true; }));
+document.getElementById("tile").addEventListener("change", e => {
+  tiles.visible = e.target.checked;
+  fitShadow(side * (e.target.checked ? 1.8 : 0.8));
+  scene.fog = e.target.checked ? fog : null;
+});
+document.getElementById("shadows").addEventListener("change", e => {
+  sun.castShadow = e.target.checked;
+});
+renderer.domElement.addEventListener("keydown", e => {
+  if (e.key === " ") { e.preventDefault(); setPlaying(!playing); }
+  if (e.key === "ArrowRight") { setPlaying(false); setTime(t + 1); }
+  if (e.key === "ArrowLeft") { setPlaying(false); setTime(t - 1); }
+});
+
+// Sky and fog follow the page theme.
+const fog = new THREE.Fog(0xf4f8f3, side * 2, side * 6);
+function applyTheme() {
+  const css = getComputedStyle(document.documentElement);
+  fog.color.set(css.getPropertyValue("--sky-low").trim() || "#f4f8f3");
+}
+applyTheme();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+frameCamera(camera.aspect);
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min((now - last) / 1000, 0.1);
+  last = now;
+  if (playing) {
+    const yrPerSec = +document.getElementById("speed").value;
+    const next = t + dt * yrPerSec / frameDt;
+    if (next >= nF - 1) { setTime(nF - 1); setPlaying(false); } else setTime(next);
+  }
+  if (dirty) { drawPanel(update(t)); dirty = false; }
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+setTime(t);
+showRamp();
+requestAnimationFrame(loop);
+</script>

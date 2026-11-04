@@ -1,19 +1,27 @@
-Package: trees3D
-Type: Package
-Title: Visualizing a single or stand of trees in 3D using openGL
-Version: 1.0
-Date: 2016
-Author: Daniel Falster and Remko Duursma
+Package: standviz
+Title: 3D Visualisation of Stands Simulated with 'plant'
+Version: 0.1.0
+Authors@R: c(
+    person("Daniel", "Falster", email = "daniel.falster@unsw.edu.au",
+           role = c("aut", "cre")),
+    person("Remko", "Duursma", role = "ctb"))
+Description: Turns the cohort size distributions simulated by the 'plant'
+    forest model into explicit, persistent individual trees, and renders a
+    stand growing through time as an interactive 3D page in the browser
+    (three.js).
+License: GPL-3
+Encoding: UTF-8
 Depends:
-    R (>= 3.0.0)
-Maintainer: Daniel Falster <daniel.falster@mq.edu.au>
-Description: Using the openGL library generate 3D plots of a stand of trees, given crown
-    shapes, tree dimensions and locations.
-License: file LICENSE
-LazyData: yes
+    R (>= 4.1.0)
 Imports:
-    rgl
+    jsonlite,
+    stats
 Suggests:
-    testthat,
-    devtools,
-RoxygenNote: 5.0.1
+    plant,
+    testthat (>= 3.0.0),
+    withr
+Remotes:
+    traitecoevo/plant@develop
+Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 8.0.0

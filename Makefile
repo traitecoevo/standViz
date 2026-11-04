@@ -1,51 +1,20 @@
-PACKAGE := $(shell grep '^Package:' DESCRIPTION | sed -E 's/^Package:[[:space:]]+//')
 RSCRIPT = Rscript --no-init-file
 
 all: install
 
-test:
-	${RSCRIPT} -e 'library(methods); devtools::test()'
+document:
+	${RSCRIPT} -e "roxygen2::roxygenise()"
 
-test_all:
-	REMAKE_TEST_INSTALL_PACKAGES=true make test
-
-autodoc:
-	${RSCRIPT} autodoc.R process
-
-roxygen:
-	@mkdir -p man
-	${RSCRIPT} -e "library(methods); devtools::document()"
-
-staticdocs:
-	@mkdir -p inst/staticdocs
-	Rscript -e "library(methods); staticdocs::build_site()"
-	rm -f vignettes/*.html
-
-website: staticdocs
-	./update_web.sh
-
-install:
+install: document
 	R CMD INSTALL .
 
-build:
-	R CMD build .
+test:
+	${RSCRIPT} -e "devtools::test()"
 
-check: build
-	_R_CHECK_CRAN_INCOMING_=FALSE R CMD check --as-cran --no-manual `ls -1tr ${PACKAGE}*gz | tail -n1`
-	@rm -f `ls -1tr ${PACKAGE}*gz | tail -n1`
-	@rm -rf ${PACKAGE}.Rcheck
+check:
+	${RSCRIPT} -e "devtools::check(document = FALSE)"
 
-check_all:
-	REMAKE_TEST_INSTALL_PACKAGES=true make check
+demo: install
+	${RSCRIPT} inst/examples/make_demo.R
 
-README.md: README.Rmd
-	Rscript -e 'library(methods); devtools::load_all(); knitr::knit("README.Rmd")'
-	sed -i.bak 's/[[:space:]]*$$//' README.md
-	rm -f $@.bak
-
-vignettes: vignettes/introduction.Rmd
-
-vignettes/introduction.Rmd: vignettes/src/introduction.R
-	${RSCRIPT} -e 'library(sowsear); sowsear("$<", output="$@")'
-
-.PHONY: all test document install vignettes
+.PHONY: all document install test check demo

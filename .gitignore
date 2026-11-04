@@ -5,3 +5,6 @@
 *-Ex.R
 .Rproj.user
 inst/doc
+
+# Viewer pages written by the demo
+/*.html

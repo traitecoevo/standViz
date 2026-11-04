@@ -1,4 +1,4 @@
 library(testthat)
-library(trees3D)
+library(standviz)
 
-test_check("trees3D")
+test_check("standviz")

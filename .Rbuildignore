@@ -1,4 +1,10 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
-.git
-.gitignore
+^\.claude$
+^\.github$
+^AGENTS\.md$
+^PLAN\.md$
+^Makefile$
+^LICENSE$
+^ignore$
+^\.\.Rcheck$
