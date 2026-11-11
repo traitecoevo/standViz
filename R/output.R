@@ -7,43 +7,22 @@
 #' @param stand A `standviz_stand` from [realise_stand()].
 #' @return A data frame with `frame`, `time`, `tree`, `species`, `x`, `y`,
 #'   `height`, `crown_scale`, `crown_radius` (widest point), `stem_diameter`
-#'   (m) and `light_crown`: the canopy openness at the crown's leaf-weighted
-#'   centre.
+#'   (m), `light_crown` (the canopy openness at the crown's leaf-weighted
+#'   centre), and every other state variable the stand carries, such as
+#'   `area_leaf`, `mass_live`, `fecundity` and `net_mass_production_dt`.
 #' @export
 stand_long <- function(stand) {
+  r <- stand$rows
   tr <- stand$trees
-  n_frames <- length(stand$times)
-  len <- pmin(tr$death_frame - 1, n_frames) - tr$birth_frame + 1
-  tree <- rep(seq_len(nrow(tr)), len)
-  frame <- sequence(len, from = tr$birth_frame)
-  k <- match(tr$species[tree], stand$species$id)
-  i <- tr$interval[tree]
-  v <- tr$v[tree]
-
-  ## Each tree sits a fixed fraction v of the way between its two nodes.
-  at_tree <- function(what) {
-    out <- numeric(length(tree))
-    for (s in unique(k)) {
-      m <- stand$nodes[[s]][[what]]
-      j <- which(k == s)
-      out[j] <- m[cbind(frame[j], i[j])] * (1 - v[j]) +
-        m[cbind(frame[j], i[j] + 1)] * v[j]
-    }
-    out
-  }
-  height <- at_tree("height")
-  crown_scale <- at_tree("crown_scale")
-  widest <- vapply(stand$species$eta, function(eta) {
-    max(crown_profile(seq(0, 1, by = 0.001), eta))
-  }, 0)
-
-  data.frame(frame = frame, time = stand$times[frame], tree = tree,
-             species = tr$species[tree], x = tr$x[tree], y = tr$y[tree],
-             height = height, crown_scale = crown_scale,
-             crown_radius = crown_scale * widest[k],
-             stem_diameter = at_tree("stem_diameter"),
-             light_crown = light_at(stand$light, frame,
-                                    height * stand$species$eta_c[k]))
+  k <- match(tr$species[r$tree], stand$species$id)
+  out <- data.frame(frame = r$frame, time = stand$times[r$frame], tree = r$tree,
+                    species = tr$species[r$tree], x = tr$x[r$tree], y = tr$y[r$tree],
+                    height = r$height, crown_scale = r$crown_scale,
+                    crown_radius = r$crown_scale * crown_widest(stand$species$eta)[k],
+                    stem_diameter = r$stem_diameter,
+                    light_crown = light_at(stand$light, r$frame,
+                                           r$height * stand$species$eta_c[k]))
+  cbind(out, r[setdiff(names(r), names(out))])
 }
 
 ## Canopy openness at height z in frame f, linear on the light grid.
@@ -68,15 +47,27 @@ light_at <- function(light, frame, z) {
 #' @param standalone Wrap the page in its own `<html>` document, so it opens
 #'   from disk. `FALSE` writes the bare fragment, for hosts that supply the
 #'   document (such as a claude.ai artifact).
+#' @param colour_by Further state variables the viewer can colour trees by, as
+#'   a named character vector of columns of `stand$rows` (every state variable
+#'   from plant and [plant::expand_state()]) with the names as button labels.
+#'   Each adds two bytes per tree per frame to the page.
 #' @return `file`, invisibly.
 #' @export
 write_viewer <- function(stand, file, title = "Stand through time",
-                         standalone = TRUE) {
+                         standalone = TRUE,
+                         colour_by = c(Growth = "net_mass_production_dt",
+                                       `Leaf area` = "area_leaf")) {
+  missing <- setdiff(colour_by, names(stand$rows))
+  if (length(missing) > 0) {
+    stop("Not in the stand: ", paste(missing, collapse = ", "), call. = FALSE)
+  }
+  if (is.null(names(colour_by))) names(colour_by) <- colour_by
+  names(colour_by)[names(colour_by) == ""] <- colour_by[names(colour_by) == ""]
   template <- system.file("viewer", "viewer.html", package = "standviz",
                           mustWork = TRUE)
   html <- paste(readLines(template, warn = FALSE), collapse = "\n")
   ## A "</" inside the data would close its <script> element.
-  json <- gsub("</", "<\\/", stand_json(stand), fixed = TRUE)
+  json <- gsub("</", "<\\/", stand_json(stand, colour_by), fixed = TRUE)
   html <- splice(html, "__STAND_TITLE__", title)
   html <- splice(html, "__STAND_DATA__", json)
   if (standalone) {
@@ -98,10 +89,15 @@ splice <- function(text, token, value) {
   substr(out, 1, nchar(out) - 1)
 }
 
-## The viewer's contract. Frames are 0-based in JSON; matrices are row-major,
-## one row per frame; NA (a node not yet born) becomes null.
-stand_json <- function(stand) {
+## The viewer's contract. Frames are 0-based. Each tree's visible frames are
+## one unbroken run, stored contiguously in the row arrays from `offset`, in
+## frame order. Per-row values are 16-bit integers spanning the variable's
+## range; `colour` lists the extra variables offered as colours. The light
+## profile is row-major, one row per frame.
+stand_json <- function(stand, colour_by = character(0)) {
   tr <- stand$trees
+  r <- stand$rows
+  n <- tabulate(r$tree, nrow(tr))
   x <- list(
     meta = stand$meta,
     times = stand$times,
@@ -115,14 +111,27 @@ stand_json <- function(stand) {
       c(as.list(stand$species[k, ]),
         list(profile = list(u = c(u_base, u), r = c(0, crown_profile(u, eta)))))
     }),
-    nodes = lapply(stand$nodes, function(n) {
-      list(height = n$height, crown_scale = n$crown_scale,
-           stem_diameter = n$stem_diameter)
-    }),
     trees = list(species = match(tr$species, stand$species$id) - 1L,
-                 interval = tr$interval - 1L, v = tr$v, x = tr$x, y = tr$y,
-                 birth = tr$birth_frame - 1L, death = tr$death_frame - 1L),
+                 x = tr$x, y = tr$y, birth = tr$birth_frame - 1L, frames = n,
+                 offset = c(0L, cumsum(n)[-length(n)])),
+    rows = lapply(c(height = "height", crown_scale = "crown_scale",
+                    stem_diameter = "stem_diameter"),
+                  function(v) pack_u16(r[[v]])),
+    colour = lapply(seq_along(colour_by), function(i) {
+      c(list(label = names(colour_by)[i], column = unname(colour_by[i])),
+        pack_u16(r[[colour_by[i]]]))
+    }),
     light = stand$light)
   jsonlite::toJSON(x, digits = I(4), na = "null", auto_unbox = TRUE,
                    matrix = "rowmajor")
+}
+
+## Values as 16-bit integers spanning their range (min + q * scale), base64.
+## Net production, for one, is negative in deep shade.
+pack_u16 <- function(v) {
+  lo <- min(v)
+  scale <- (max(v) - lo) / 65535
+  q <- if (scale > 0) as.integer(round((v - lo) / scale)) else integer(length(v))
+  list(min = lo, scale = scale,
+       data = jsonlite::base64_enc(writeBin(q, raw(), size = 2, endian = "little")))
 }

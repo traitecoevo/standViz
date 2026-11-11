@@ -1,62 +1,71 @@
 #' Turn a plant run into persistent individual trees
 #'
-#' `plant` simulates a stand as a density of plants over height, carried along
-#' nodes (cohort boundaries). This draws explicit trees from that density that
-#' persist through time, so they can be drawn and animated:
+#' `plant` simulates a stand as a density of plants over height and birth date.
+#' This draws explicit trees from it with [plant::sample_size_distribution()],
+#' which follows the same individuals through every frame: each grows with its
+#' cohort and, once dead, stays dead, and at every frame the number of trees is
+#' Poisson about the model's density. Leaf area and stem diameter come from the
+#' strategy's own allometry through [plant::expand_state()].
 #'
-#' * Each tree belongs to the interval between two adjacent nodes, and sits at a
-#'   fixed fraction `v` of the way from the older node to the younger, so it
-#'   grows smoothly with them.
-#' * The interval holds its count at the moment it forms (both nodes exist),
-#'   thinned by the mean cumulative mortality of its two nodes. That count never
-#'   increases, and is rounded with one fixed draw per interval, so it is
-#'   unbiased and stable over time. A tree is alive while its rank in the
-#'   interval is within the count, so trees die in a fixed order and never come
-#'   back.
-#' * Positions are **not** from the model, which is spatially implicit. They
-#'   are a seeded visual device: best-candidate sampling on a torus, spacing
-#'   larger trees by crown size, so the patch tiles seamlessly.
+#' Positions are **not** from the model, which is spatially implicit. They are a
+#' seeded visual device: best-candidate sampling on a torus, spacing larger
+#' trees by crown size, so the patch tiles seamlessly.
 #'
-#' @param results Output of `plant::run_scm(p, collect = TRUE)`.
+#' @param results Output of `plant::run_scm(p, ctrl, collect = TRUE)`, run with
+#'   density in birth date: `plant::control(node_density_coordinate =
+#'   "birth_date")`.
 #' @param side Side of the square patch drawn (m).
 #' @param frames_per_year Frame rate in model time.
 #' @param min_height Trees appear once taller than this (m). Seedlings far
-#'   outnumber trees, and are too small to see anyway.
-#' @param lad Leaf area per crown volume (m^2 m^-3); see [ff16_geometry()].
-#' @param seed Random seed for ranks, positions and rounding. The caller's
-#'   random state is left untouched.
-#' @return A `standviz_stand`: frame times, the light profile through time,
-#'   per-species node trajectories, and one row per tree. Expand it with
-#'   [stand_long()] or draw it with [write_viewer()].
+#'   outnumber trees and are too small to see, and the viewer page grows with
+#'   every tree-frame it carries.
+#' @param lad Leaf area per crown volume (m^2 m^-3); see [crown_scale()].
+#' @param seed Random seed for the sample and the positions. The caller's random
+#'   state is left untouched.
+#' @return A `standviz_stand`: frame times, the light profile through time, one
+#'   row per tree, and one row per tree per frame it is visible carrying every
+#'   state variable from the run and from [plant::expand_state()] (leaf, sapwood,
+#'   bark and root areas and masses, fecundity, net production, ...). Expand it
+#'   with [stand_long()] or draw it with [write_viewer()].
 #' @export
 realise_stand <- function(results, side = 20, frames_per_year = 2,
-                          min_height = 1, lad = 1, seed = 1) {
+                          min_height = 1.5, lad = 1, seed = 1) {
   model <- stand_model(results$p)
   if (model != "FF16") {
     stop("Only FF16 runs can be realised so far, not ", model, call. = FALSE)
+  }
+  if (!"sample_size_distribution" %in% getNamespaceExports("plant")) {
+    stop("realise_stand() needs a plant with sample_size_distribution() ",
+         "(traitecoevo/plant#722)", call. = FALSE)
   }
   with_seed(seed, {
     sp <- results$species
     t_end <- max(sp$time)
     times <- unique(c(seq(0, t_end, by = 1 / frames_per_year), t_end))
+    rows <- plant::sample_size_distribution(results, area = side^2, times = times)
+    rows <- tree_geometry(rows[rows$height >= min_height, ], results, lad)
+
+    ## Height never falls, so a tree's visible frames are one unbroken run.
+    rows$frame <- match(rows$time, times)
+    rows <- rows[order(rows$frame, rows$species, rows$individual), ]
+    key <- paste(rows$species, rows$individual)
+    rows$tree <- match(key, unique(key))
+    rows <- rows[order(rows$tree, rows$frame), ]
+    first <- !duplicated(rows$tree)
+    last <- !duplicated(rows$tree, fromLast = TRUE)
+    trees <- data.frame(species = as.integer(rows$species[first]),
+                        birth_time = rows$birth_time[first],
+                        birth_frame = rows$frame[first],
+                        death_frame = rows$frame[last] + 1L,
+                        r_max = rows$crown_scale[last])
     pars <- lapply(results$p$strategies, `[[`, "pars")
     ids <- sort(unique(as.integer(sp$species)))
-
-    per_species <- lapply(ids, function(s) {
-      realise_species(sp[as.integer(sp$species) == s, ], pars[[s]], times,
-                      side^2, min_height, lad)
-    })
-    trees <- do.call(rbind, Map(function(s, x) {
-      if (nrow(x$trees) > 0) x$trees$species <- s
-      x$trees
-    }, ids, per_species))
-    trees <- trees[order(trees$birth_frame, trees$species), ]
+    eta <- vapply(pars[ids], `[[`, 0, "eta")
+    trees$r_max <- trees$r_max * crown_widest(eta)[match(trees$species, ids)]
     xy <- place_trees(trees, side)
     trees$x <- xy$x
     trees$y <- xy$y
-    rownames(trees) <- NULL
 
-    eta <- vapply(pars[ids], `[[`, 0, "eta")
     stand <- list(
       meta = list(model = model, side = side, lad = lad,
                   min_height = min_height, seed = seed,
@@ -66,9 +75,9 @@ realise_stand <- function(results, side = 20, frames_per_year = 2,
       times = times,
       species = data.frame(id = ids, label = species_labels(pars[ids]),
                            eta = eta, eta_c = crown_centre(eta)),
-      nodes = lapply(per_species, `[[`, "nodes"),
-      trees = trees[c("species", "interval", "v", "x", "y", "birth_frame",
-                      "death_frame", "h_max")],
+      trees = trees[c("species", "birth_time", "x", "y", "birth_frame",
+                      "death_frame")],
+      rows = tree_rows(rows),
       light = light_profile(results$env$light_availability, times,
                             max(sp$height)))
     class(stand) <- "standviz_stand"
@@ -78,106 +87,46 @@ realise_stand <- function(results, side = 20, frames_per_year = 2,
 
 #' @export
 print.standviz_stand <- function(x, ...) {
-  alive <- vapply(seq_along(x$times), function(f) {
-    sum(x$trees$birth_frame <= f & x$trees$death_frame > f)
-  }, 0)
   cat(sprintf("<standviz_stand> %s, %d species, %g x %g m patch\n",
               x$meta$model, nrow(x$species), x$meta$side, x$meta$side))
   cat(sprintf("  %d frames over %g years; %d trees ever, up to %d at once\n",
-              length(x$times), max(x$times), nrow(x$trees), max(alive)))
+              length(x$times), max(x$times), nrow(x$trees),
+              max(c(0L, tabulate(x$rows$frame)))))
   invisible(x)
 }
 
-## Node trajectories at the frame times, and the trees of one species.
-realise_species <- function(d, pars, times, area, min_height, lad) {
-  d <- d[order(d$node, d$time), ]
-  ## A node with no survivors carries infinite cumulative mortality, which a
-  ## spline cannot pass through; exp(-700) is as dead.
-  d$mortality <- pmin(d$mortality, 700)
-  by_node <- lapply(split(d, d$node), function(x) x[!duplicated(x$time), ])
-  birth <- vapply(by_node, function(x) min(x$time), 0)
-  n_frames <- length(times)
-
-  ## Height, cumulative mortality and heartwood only ever rise, so a monotone
-  ## spline keeps them rising between the solver's (irregular) steps.
-  at_frames <- function(col) {
-    vapply(by_node, function(x) {
-      out <- rep(NA_real_, n_frames)
-      ok <- times >= min(x$time) & times <= max(x$time)
-      if (nrow(x) == 1) {
-        out[ok] <- x[[col]]
-      } else {
-        out[ok] <- stats::splinefun(x$time, x[[col]], method = "monoH.FC")(times[ok])
-      }
-      out
-    }, numeric(n_frames))
+## One row per tree per visible frame: what the viewer draws first, then every
+## other state variable plant reports or expand_state() derives.
+tree_rows <- function(rows) {
+  rows$stem_diameter <- rows$diameter_stem
+  ## Interpolation across a changing set of nodes can lower a followed height by
+  ## a fraction of a millimetre between frames. A drawn tree never shrinks, so
+  ## the sizes the viewer draws take their running maximum; every other column
+  ## is plant's value.
+  for (v in c("height", "crown_scale", "stem_diameter")) {
+    rows[[v]] <- stats::ave(rows[[v]], rows$tree, FUN = cummax)
   }
-  height <- at_frames("height")
-  mortality <- at_frames("mortality")
-  geom <- ff16_geometry(height, at_frames("area_heartwood"), pars, lad)
-  dim(geom$crown_scale) <- dim(geom$stem_diameter) <- dim(height)
-
-  trees <- lapply(seq_len(length(by_node) - 1), function(i) {
-    realise_interval(i, by_node, height, mortality, geom$crown_scale, times,
-                     area, min_height)
-  })
-  trees <- do.call(rbind, trees)
-  if (!is.null(trees)) {
-    trees$r_max <- trees$crown_max *
-      max(crown_profile(seq(0, 1, by = 0.001), pars$eta))
-  }
-  list(nodes = list(birth = unname(birth), height = height,
-                    crown_scale = geom$crown_scale,
-                    stem_diameter = geom$stem_diameter),
-       trees = trees)
+  first <- c("tree", "frame", "height", "crown_scale", "stem_diameter")
+  drop <- c("species", "individual", "birth_time", "time", "row",
+            "diameter_stem")
+  rest <- setdiff(names(rows)[vapply(rows, is.numeric, TRUE)], c(first, drop))
+  as.data.frame(rows[c(first, rest)])
 }
 
-## The trees of the interval between node i (older, taller) and node i + 1.
-realise_interval <- function(i, by_node, height, mortality, crown_scale, times,
-                             area, min_height) {
-  young <- by_node[[i + 1]]
-  t_close <- young$time[1]
-  old <- by_node[[i]][by_node[[i]]$time == t_close, ]
-  ## Number when the interval forms. Density is taken as log-linear in height
-  ## between the nodes: just after forming it can fall several hundredfold from
-  ## the seedling end, which a trapezium (and an even spread) badly overcounts.
-  slope <- log(max(young$density[1], 1e-300) / max(old$density, 1e-300))
-  n_close <- area * (old$height - young$height[1]) *
-    old$density * exp_mean(slope)
-  frames <- which(times >= t_close & !is.na(height[, i + 1]))
-  if (length(frames) == 0 || !(n_close > 0)) return(NULL)
-
-  m_bar <- (mortality[frames, i] + mortality[frames, i + 1]) / 2
-  m_close <- (old$mortality + young$mortality[1]) / 2
-  expected <- cummin(pmin(n_close * exp(-(m_bar - m_close)), n_close))
-  count <- floor(expected + stats::runif(1))
-  n_max <- count[1]
-  if (n_max == 0) return(NULL)
-
-  ## Rank r is alive while count >= r; count never rises, so that is a run of
-  ## frames starting at the interval's first.
-  rank <- sample.int(n_max)
-  death <- frames[1] + vapply(rank, function(r) sum(count >= r), 0)
-  ## Fraction of the way to the young node, drawn from the same log-linear
-  ## density.
-  u <- stats::runif(n_max)
-  v <- if (abs(slope) < 1e-8) u else log1p(u * expm1(slope)) / slope
-  h_tree <- outer(height[frames, i], 1 - v) + outer(height[frames, i + 1], v)
-  first_visible <- apply(h_tree >= min_height, 2, function(z) match(TRUE, z))
-  birth <- frames[1] - 1 + first_visible
-  keep <- !is.na(birth) & birth < death
-  if (!any(keep)) return(NULL)
-
-  last <- pmin(death[keep] - 1, length(times))
-  lerp <- function(m) m[cbind(last, i)] * (1 - v[keep]) + m[cbind(last, i + 1)] * v[keep]
-  data.frame(interval = i, v = v[keep], birth_frame = birth[keep],
-             death_frame = death[keep], h_max = lerp(height),
-             crown_max = lerp(crown_scale))
-}
-
-## Mean of exp(slope * v) over v in [0, 1].
-exp_mean <- function(slope) {
-  if (abs(slope) < 1e-8) 1 else expm1(slope) / slope
+## Leaf area and stem diameter from plant's own allometry, and the crown size
+## they give at the chosen leaf area density.
+tree_geometry <- function(rows, results, lad) {
+  spp <- as.character(sort(unique(results$species$species)))
+  rows$row <- seq_len(nrow(rows))
+  ## A factor keeps a species with no trees in expand_state()'s split, which
+  ## pairs the pieces with strategies by position.
+  rows$species <- factor(rows$species, levels = spp)
+  expanded <- plant::expand_state(list(species = rows, n_spp = length(spp),
+                                       p = results$p))$species
+  expanded <- expanded[order(expanded$row), ]
+  expanded$species <- as.character(expanded$species)
+  expanded$crown_scale <- crown_scale(expanded$area_leaf, expanded$height, lad)
+  expanded
 }
 
 ## Best-candidate sampling on a torus. Trees are placed largest first, each at

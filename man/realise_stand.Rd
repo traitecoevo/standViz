@@ -8,49 +8,45 @@ realise_stand(
   results,
   side = 20,
   frames_per_year = 2,
-  min_height = 1,
+  min_height = 1.5,
   lad = 1,
   seed = 1
 )
 }
 \arguments{
-\item{results}{Output of \code{plant::run_scm(p, collect = TRUE)}.}
+\item{results}{Output of \code{plant::run_scm(p, ctrl, collect = TRUE)}, run with
+density in birth date: \code{plant::control(node_density_coordinate = "birth_date")}.}
 
 \item{side}{Side of the square patch drawn (m).}
 
 \item{frames_per_year}{Frame rate in model time.}
 
 \item{min_height}{Trees appear once taller than this (m). Seedlings far
-outnumber trees, and are too small to see anyway.}
+outnumber trees and are too small to see, and the viewer page grows with
+every tree-frame it carries.}
 
-\item{lad}{Leaf area per crown volume (m^2 m^-3); see \code{\link[=ff16_geometry]{ff16_geometry()}}.}
+\item{lad}{Leaf area per crown volume (m^2 m^-3); see \code{\link[=crown_scale]{crown_scale()}}.}
 
-\item{seed}{Random seed for ranks, positions and rounding. The caller's
-random state is left untouched.}
+\item{seed}{Random seed for the sample and the positions. The caller's random
+state is left untouched.}
 }
 \value{
-A \code{standviz_stand}: frame times, the light profile through time,
-per-species node trajectories, and one row per tree. Expand it with
-\code{\link[=stand_long]{stand_long()}} or draw it with \code{\link[=write_viewer]{write_viewer()}}.
+A \code{standviz_stand}: frame times, the light profile through time, one
+row per tree, and one row per tree per frame it is visible carrying every
+state variable from the run and from \code{\link[plant:expand_state]{plant::expand_state()}} (leaf, sapwood,
+bark and root areas and masses, fecundity, net production, ...). Expand it
+with \code{\link[=stand_long]{stand_long()}} or draw it with \code{\link[=write_viewer]{write_viewer()}}.
 }
 \description{
-\code{plant} simulates a stand as a density of plants over height, carried along
-nodes (cohort boundaries). This draws explicit trees from that density that
-persist through time, so they can be drawn and animated:
+\code{plant} simulates a stand as a density of plants over height and birth date.
+This draws explicit trees from it with \code{\link[plant:sample_size_distribution]{plant::sample_size_distribution()}},
+which follows the same individuals through every frame: each grows with its
+cohort and, once dead, stays dead, and at every frame the number of trees is
+Poisson about the model's density. Leaf area and stem diameter come from the
+strategy's own allometry through \code{\link[plant:expand_state]{plant::expand_state()}}.
 }
 \details{
-\itemize{
-\item Each tree belongs to the interval between two adjacent nodes, and sits at a
-fixed fraction \code{v} of the way from the older node to the younger, so it
-grows smoothly with them.
-\item The interval holds its count at the moment it forms (both nodes exist),
-thinned by the mean cumulative mortality of its two nodes. That count never
-increases, and is rounded with one fixed draw per interval, so it is
-unbiased and stable over time. A tree is alive while its rank in the
-interval is within the count, so trees die in a fixed order and never come
-back.
-\item Positions are \strong{not} from the model, which is spatially implicit. They
-are a seeded visual device: best-candidate sampling on a torus, spacing
-larger trees by crown size, so the patch tiles seamlessly.
-}
+Positions are \strong{not} from the model, which is spatially implicit. They are a
+seeded visual device: best-candidate sampling on a torus, spacing larger
+trees by crown size, so the patch tiles seamlessly.
 }

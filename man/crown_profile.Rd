@@ -14,5 +14,5 @@ crown_profile(u, eta)
 \description{
 \verb{sqrt(2 eta (1 - u^eta) u^(eta - 1))}: the Yokozawa leaf density in relative
 height \code{u = z / H}, square-rooted to give a radius. Multiply by
-\code{\link[=ff16_geometry]{ff16_geometry()}}'s \code{crown_scale} to get metres.
+\code{\link[=crown_scale]{crown_scale()}} to get metres.
 }

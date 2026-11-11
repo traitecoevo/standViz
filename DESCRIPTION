@@ -15,9 +15,9 @@ Depends:
     R (>= 4.1.0)
 Imports:
     jsonlite,
+    plant,
     stats
 Suggests:
-    plant,
     testthat (>= 3.0.0),
     withr
 Remotes:

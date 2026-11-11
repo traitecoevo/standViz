@@ -12,8 +12,9 @@ stand_long(stand)
 \value{
 A data frame with \code{frame}, \code{time}, \code{tree}, \code{species}, \code{x}, \code{y},
 \code{height}, \code{crown_scale}, \code{crown_radius} (widest point), \code{stem_diameter}
-(m) and \code{light_crown}: the canopy openness at the crown's leaf-weighted
-centre.
+(m), \code{light_crown} (the canopy openness at the crown's leaf-weighted
+centre), and every other state variable the stand carries, such as
+\code{area_leaf}, \code{mass_live}, \code{fecundity} and \code{net_mass_production_dt}.
 }
 \description{
 Expands a realised stand into a long table, for renderers and analyses that
