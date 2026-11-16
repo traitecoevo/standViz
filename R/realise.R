@@ -77,7 +77,7 @@ realise_stand <- function(x, side = 20, frames_per_year = 2, min_size = NULL,
     } else {
       trees$r_max <- rows$diameter_stem[last] / 2
     }
-    xy <- place_trees(trees, side)
+    xy <- place_trees(trees, side, stems = !size$has_crown)
     trees$x <- xy$x
     trees$y <- xy$y
 
@@ -198,17 +198,17 @@ tree_geometry <- function(rows, results, lad, crowned) {
 ## are spaced from the large ones only, and small trees, the great majority,
 ## are scattered uniformly. Spacing every pair is quadratic in a count that
 ## runs to tens of thousands. `r_max` is a crown's widest radius, or a stem's.
-## Stems (K93) are far narrower than any crown, so when every tree is narrower
-## than a medium crown (stems, or a stand of seedlings) the widest tenth are
-## spaced from each other and the rest scattered: with a single medium class,
-## every stem would be pushed away from the same few anchors and they would
-## bunch on the far side of the torus.
-place_trees <- function(trees, side, k = 12, r_big = 0.5, r_medium = 0.25) {
+## Stems alone (`stems`, a model with no crown) are spaced differently: the
+## widest tenth from each other and the rest scattered. With the crowns'
+## classes, every stem would be pushed away from the same few anchors and they
+## would bunch on the far side of the torus.
+place_trees <- function(trees, side, stems = FALSE, k = 12, r_big = 0.5,
+                        r_medium = 0.25) {
   n <- nrow(trees)
   x <- stats::runif(n, 0, side)
   y <- stats::runif(n, 0, side)
   r <- trees$r_max
-  if (n > 0 && max(r) < r_medium) {
+  if (stems && n > 0) {
     r_big <- r_medium <- unname(stats::quantile(r, 0.9))
   }
   birth <- trees$birth_frame

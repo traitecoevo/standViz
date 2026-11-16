@@ -89,6 +89,19 @@ test_that("K93 stems spread across the patch", {
   }
 })
 
+test_that("stems spread however wide the widest grow", {
+  ## An old K93 stand can hold stems as wide as crowns. Under the crowns'
+  ## spacing the few widest would anchor and the next widest bunch away from
+  ## them (a quarter to a half of them in one quadrat).
+  set.seed(1)
+  r <- c(rep(0.6, 3), rep(0.3, 300), stats::runif(1697, 0.01, 0.1))
+  trees <- data.frame(r_max = r, birth_frame = 1L, death_frame = 100L)
+  xy <- place_trees(trees, side = 20, stems = TRUE)
+  wide <- r >= 0.25
+  q <- table(cut(xy$x[wide], seq(0, 20, 5)), cut(xy$y[wide], seq(0, 20, 5)))
+  expect_lt(max(q) / sum(q), 2 / 16)
+})
+
 test_that("a K93 stand with no stems above the threshold still draws", {
   skip_if_not_installed("plant")
   stand <- realise_stand(k93_run(), side = 5, min_size = 1e4)
