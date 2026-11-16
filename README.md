@@ -24,7 +24,7 @@ write_viewer(stand, "stand.html", title = "Pioneer to successor")
 
 `stand_long(stand)` gives one row per living tree per frame, with every state variable plant reports or derives, for other renderers or analyses.
 
-Only FF16 runs are supported so far. See [PLAN.md](PLAN.md) for what comes next: cinematic renders in Blender, metapopulation landscapes, TF24.
+FF16, TF24 and K93 runs can all be realised and drawn. K93's size is stem diameter and it has no height or crown, so its stand is drawn as a map of stems from above. `realise_stand()` takes a `plant_run` or its tidied list. See [PLAN.md](PLAN.md) for what comes next: 2D figures and stand reports, cinematic renders in Blender, metapopulation landscapes.
 
 ## Install
 

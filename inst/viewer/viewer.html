@@ -112,14 +112,14 @@ select { font: inherit; color: var(--fg); background: var(--bg); border: 1px sol
   </div>
   <aside class="side card" id="side">
     <section>
-      <h2>Trees taller than <span id="minh">1</span> m</h2>
+      <h2 id="legend-title">Trees taller than 1 m</h2>
       <table>
-        <thead><tr><th>Species</th><th>stems/ha</th><th>BA m²/ha</th><th>top m</th></tr></thead>
+        <thead><tr><th>Species</th><th>stems/ha</th><th>BA m²/ha</th><th id="top-head">top m</th></tr></thead>
         <tbody id="legend"></tbody>
       </table>
     </section>
     <section class="light">
-      <h2>Canopy openness by height</h2>
+      <h2 id="light-title">Canopy openness by height</h2>
       <svg id="lightchart" viewBox="0 0 260 150" role="img" aria-label="Fraction of full light reaching each height"></svg>
     </section>
     <section id="ramp" hidden>
@@ -147,7 +147,7 @@ select { font: inherit; color: var(--fg); background: var(--bg); border: 1px sol
       <div class="seg" role="radiogroup" aria-label="Colour trees by">
         <label><input type="radio" name="colour" id="col-species" value="species" checked><span>Species</span></label>
         <label><input type="radio" name="colour" id="col-light" value="light"><span>Light</span></label>
-        <label><input type="radio" name="colour" id="col-height" value="height"><span>Height</span></label>
+        <label><input type="radio" name="colour" id="col-height" value="height"><span id="col-height-label">Height</span></label>
       </div>
     </div>
     <label class="check" for="tile"><input type="checkbox" id="tile"> Repeat patch</label>
@@ -168,13 +168,19 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const D = JSON.parse(document.getElementById("stand-data").textContent);
+// A model whose size is height has crowns. One sized otherwise (K93: stem
+// diameter) has no height or crown, so its stems are drawn as discs of their
+// basal area, seen from above; the model's size is then in its own units.
+const crowned = D.meta.has_crown;
+const sizeName = D.meta.size, sizeUnits = D.meta.size_units;
 const nF = D.times.length;
 const side = D.meta.side;
 const area = side * side;
 const SPECIES_COLOURS = ["#9bc53d", "#2f6e43", "#d0922f", "#4f86ae", "#8c5aa8", "#c2554b"];
 const RAMPS = {
   light: { stops: ["#1e3a2b", "#4f8c46", "#e4e86c"], lo: "deep shade", hi: "full sun", title: "Light at crown centre" },
-  height: { stops: ["#264d63", "#3f9068", "#d9d56a"], title: "Height" },
+  height: { stops: ["#264d63", "#3f9068", "#d9d56a"],
+            title: sizeName[0].toUpperCase() + sizeName.slice(1) },
 };
 
 // The light profile, flattened (frame rows x height columns).
@@ -191,7 +197,8 @@ const unpack = ({ min, scale, data }) => {
   return Float32Array.from(q, v => min + v * scale);
 };
 const rows = {
-  height: unpack(D.rows.height), crown: unpack(D.rows.crown_scale), stem: unpack(D.rows.stem_diameter),
+  height: unpack(D.rows.size), stem: unpack(D.rows.stem_diameter),
+  crown: crowned ? unpack(D.rows.crown_scale) : null,
 };
 // Further variables offered as colours, from write_viewer(colour_by = ...). A
 // variable that crosses zero (net production in deep shade) gets a diverging
@@ -211,7 +218,13 @@ const hTop = lightGrid[lightGrid.length - 1];
 
 document.getElementById("eyebrow").textContent =
   `plant · ${D.meta.model} · ${side} × ${side} m patch`;
-document.getElementById("minh").textContent = D.meta.min_height;
+document.getElementById("legend-title").textContent = crowned
+  ? `Trees taller than ${D.meta.min_size} ${sizeUnits}`
+  : `Stems wider than ${D.meta.min_size} ${sizeUnits}`;
+document.getElementById("top-head").textContent = crowned ? `top ${sizeUnits}` : `max ${sizeUnits}`;
+document.getElementById("light-title").textContent = crowned
+  ? "Canopy openness by height" : `Light by ${sizeName}`;
+document.getElementById("col-height-label").textContent = RAMPS.height.title;
 
 // ---- scene ------------------------------------------------------------
 const stage = document.getElementById("stage");
@@ -226,11 +239,13 @@ stage.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 2000);
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, hTop * 0.3, 0);
+controls.target.set(0, crowned ? hTop * 0.3 : 0, 0);
 // Opening view: further back on a tall, narrow screen so the patch fits across.
+// A stem map is seen from almost directly above.
 function frameCamera(aspect) {
   const back = Math.max(1, 1.3 / aspect) ** 0.8;
-  camera.position.set(side * 1.45 * back, (hTop * 0.8 + 8) * back, side * 1.75 * back);
+  if (crowned) camera.position.set(side * 1.45 * back, (hTop * 0.8 + 8) * back, side * 1.75 * back);
+  else camera.position.set(0, side * 1.5 * back, side * 0.25 * back);
 }
 controls.enableDamping = true;
 controls.maxPolarAngle = Math.PI * 0.495;
@@ -264,12 +279,16 @@ scene.add(edge);
 // Crown: the species' crown profile (cross-section area proportional to leaf
 // area at that height) turned about the stem. Unit height, so instances scale
 // by (crown_scale, height, crown_scale).
-const crownGeom = D.species.map(sp => {
+const crownGeom = crowned ? D.species.map(sp => {
   const pts = sp.profile.u.map((u, i) => new THREE.Vector2(sp.profile.r[i], u));
   const g = new THREE.LatheGeometry(pts, 12);
   g.computeVertexNormals();
   return g;
-});
+}) : null;
+// A model with no height draws each stem as a solid disc of its own width.
+const DISC = 0.05;
+const discGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 16);
+discGeom.translate(0, 0.5, 0);
 const stemGeom = new THREE.CylinderGeometry(0.32, 0.5, 1, 7, 1, true);
 stemGeom.translate(0, 0.5, 0);
 
@@ -286,18 +305,21 @@ const capacity = bySpecies.map(list => {
 });
 
 const crownMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-const stemMat = new THREE.MeshLambertMaterial({ color: 0x6b5440 });
+// Without crowns the stem discs carry the colour, so they start white too.
+const stemMat = new THREE.MeshLambertMaterial({ color: crowned ? 0x6b5440 : 0xffffff });
 const meshes = D.species.map((sp, k) => {
-  const crown = new THREE.InstancedMesh(crownGeom[k], crownMat, capacity[k]);
-  const stem = new THREE.InstancedMesh(stemGeom, stemMat, capacity[k]);
+  const crown = crowned ? new THREE.InstancedMesh(crownGeom[k], crownMat, capacity[k]) : null;
+  const stem = new THREE.InstancedMesh(crowned ? stemGeom : discGeom, stemMat, capacity[k]);
   for (const m of [crown, stem]) {
+    if (!m) continue;
     m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false;
     m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     scene.add(m);
   }
-  crown.setColorAt(0, new THREE.Color(1, 1, 1));
-  crown.instanceColor.setUsage(THREE.DynamicDrawUsage);
-  return { crown, stem };
+  const coloured = crowned ? crown : stem;
+  coloured.setColorAt(0, new THREE.Color(1, 1, 1));
+  coloured.instanceColor.setUsage(THREE.DynamicDrawUsage);
+  return { crown, stem, coloured };
 });
 
 // Repeat patch: eight neighbours that share the centre's instance buffers.
@@ -310,6 +332,7 @@ for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
   const gr = ground.clone(); gr.material = groundMat; g.add(gr);
   for (const m of meshes) for (const key of ["crown", "stem"]) {
     const src = m[key];
+    if (!src) continue;
     const copy = new THREE.InstancedMesh(src.geometry, src.material, 1);
     copy.instanceMatrix = src.instanceMatrix;
     if (src.instanceColor) copy.instanceColor = src.instanceColor;
@@ -350,39 +373,53 @@ function update(t) {
   const f = Math.min(Math.floor(t), nF - 1), w = t - f, f1 = Math.min(f + 1, nF - 1);
   const stats = [];
   D.species.forEach((sp, k) => {
-    const { crown, stem } = meshes[k];
+    const { crown, stem, coloured } = meshes[k];
     let c = 0, n = 0, ba = 0, top = 0;
     for (const j of bySpecies[k]) {
       const b = T.birth[j], d = T.death[j];
       if (f < b - 1 || f >= d) continue;
       let h, cs, sd, grow = 1, fall = 0;
+      // h is the model's size: height, or (with no crown) stem diameter.
       if (f === b - 1) {                       // appears during this frame
-        h = at(rows.height, j, b); cs = at(rows.crown, j, b); sd = at(rows.stem, j, b);
+        h = at(rows.height, j, b); sd = at(rows.stem, j, b);
+        cs = crowned ? at(rows.crown, j, b) : 0;
         grow = w;
       } else if (f === d - 1) {                // last frame seen
-        h = at(rows.height, j, f); cs = at(rows.crown, j, f); sd = at(rows.stem, j, f);
+        h = at(rows.height, j, f); sd = at(rows.stem, j, f);
+        cs = crowned ? at(rows.crown, j, f) : 0;
         if (d < nF) fall = w;                  // dies during this frame: it falls
       } else {
         h = at(rows.height, j, f) * (1 - w) + at(rows.height, j, f1) * w;
-        cs = at(rows.crown, j, f) * (1 - w) + at(rows.crown, j, f1) * w;
         sd = at(rows.stem, j, f) * (1 - w) + at(rows.stem, j, f1) * w;
+        cs = crowned ? at(rows.crown, j, f) * (1 - w) + at(rows.crown, j, f1) * w : 0;
       }
       if (!(h > 0)) continue;
       if (fall === 0 && grow === 1) { n++; ba += Math.PI * sd * sd / 4; top = Math.max(top, h); }
       pos.set(T.x[j] - side / 2, 0, T.y[j] - side / 2);
+      // A crowned tree falls when it dies; a stem disc shrinks away.
+      if (!crowned && fall > 0) { grow = 1 - fall; fall = 0; }
       if (fall > 0) {
         const phi = j * 2.39996;
         axis.set(Math.cos(phi), 0, Math.sin(phi));
         quat.setFromAxisAngle(axis, fall * fall * Math.PI * 0.48);
       } else quat.copy(noTurn);
-      scl.set(cs * grow, h * grow, cs * grow);
-      crown.setMatrixAt(c, mat4.compose(pos, quat, scl));
-      scl.set(sd * grow, h * grow, sd * grow);
+      if (crowned) {
+        scl.set(cs * grow, h * grow, cs * grow);
+        crown.setMatrixAt(c, mat4.compose(pos, quat, scl));
+        scl.set(sd * grow, h * grow, sd * grow);
+      } else {
+        scl.set(sd * grow, DISC * grow, sd * grow);
+      }
       stem.setMatrixAt(c, mat4.compose(pos, quat, scl));
+      // The light the tree sees: at its crown's centre, or at its own size.
+      const zLight = crowned ? h * sp.eta_c : h;
       if (colourBy === "species") {
-        col.copy(speciesCol[k % speciesCol.length]).multiplyScalar(0.62 + 0.38 * lightAt(f, w, h * sp.eta_c));
+        // Crowns are shaded by the light they get; a stem map's discs, seen
+        // from above, keep their species' colour.
+        col.copy(speciesCol[k % speciesCol.length]);
+        if (crowned) col.multiplyScalar(0.62 + 0.38 * lightAt(f, w, zLight));
       } else if (colourBy === "light") {
-        col.copy(ramp(RAMPS.light.stops, lightAt(f, w, h * sp.eta_c)));
+        col.copy(ramp(RAMPS.light.stops, lightAt(f, w, zLight)));
       } else if (colourBy === "height") {
         col.copy(ramp(RAMPS.height.stops, h / hTop));
       } else {
@@ -393,17 +430,20 @@ function update(t) {
           : x.hi > x.lo ? (v - x.lo) / (x.hi - x.lo) : 0.5;
         col.copy(ramp(x.stops, u));
       }
-      crown.setColorAt(c, col);
+      coloured.setColorAt(c, col);
       c++;
     }
-    crown.count = stem.count = c;
-    crown.instanceMatrix.needsUpdate = stem.instanceMatrix.needsUpdate = true;
-    crown.instanceColor.needsUpdate = true;
+    stem.count = c;
+    stem.instanceMatrix.needsUpdate = true;
+    if (crown) { crown.count = c; crown.instanceMatrix.needsUpdate = true; }
+    coloured.instanceColor.needsUpdate = true;
     stats.push({ n, ba, top });
   });
   for (const g of tiles.children) for (const m of g.children) if (m.userData.src) m.count = m.userData.src.count;
-  const g0 = lightAt(f, w, 0);
-  groundMat.color.copy(ramp(["#33402a", "#5d7a3c", "#93ad57"], g0));
+  // The ground under crowns shows the light reaching it; under a stem map it
+  // is plain, so the discs read against it.
+  if (crowned) groundMat.color.copy(ramp(["#33402a", "#5d7a3c", "#93ad57"], lightAt(f, w, 0)));
+  else groundMat.color.set("#d8d2bd");
   return { stats, f, w };
 }
 
@@ -423,7 +463,7 @@ let axes = `<line class="axis" x1="${L}" y1="${H - B}" x2="${W - R}" y2="${H - B
   <line class="axis" x1="${L}" y1="${Tp}" x2="${L}" y2="${H - B}"/>`;
 for (const x of [0, 0.5, 1]) axes += `<text x="${xs(x)}" y="${H - B + 13}" text-anchor="middle">${x}</text>`;
 for (let z = 0; z <= hTop; z += tickStep) axes += `<text x="${L - 5}" y="${ys(z) + 3}" text-anchor="end">${z}</text>`;
-axes += `<text x="${L - 5}" y="${Tp - 0}" text-anchor="end" dy="-1">m</text>`;
+axes += `<text x="${L - 5}" y="${Tp - 0}" text-anchor="end" dy="-1">${sizeUnits}</text>`;
 svg.innerHTML = axes + `<path class="area" id="larea"/><path class="curve" id="lcurve"/><line class="top" id="ltop" x1="${L}" x2="${W - R}"/>`;
 
 function drawPanel({ stats, f, w }) {
@@ -452,7 +492,7 @@ function showRamp() {
   const x = extraByKey[colourBy];
   const r = x ? { title: x.label, stops: x.stops, lo: sig(x.lo), hi: sig(x.hi) }
     : colourBy === "light" ? RAMPS.light
-    : { ...RAMPS.height, lo: "0 m", hi: `${fmt(hTop, 0)} m` };
+    : { ...RAMPS.height, lo: `0 ${sizeUnits}`, hi: `${fmt(hTop, 0)} ${sizeUnits}` };
   document.getElementById("ramp-title").textContent = r.title;
   document.getElementById("ramp-bar").style.background = `linear-gradient(90deg, ${r.stops.join(",")})`;
   document.getElementById("ramp-lo").textContent = r.lo;
