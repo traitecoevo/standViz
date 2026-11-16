@@ -31,7 +31,7 @@ test_that("a TF24 plant_run realises with crowns from its own shape and draws", 
   expect_identical(stand$meta$model, "TF24")
   expect_true(stand$meta$has_crown)
   expect_gt(nrow(stand$trees), 0)
-  ## TF24's own crown, under the run's control.
+  ## TF24's own crown shape.
   out <- plant::tidy(run)
   expect_equal(stand$crowns[[1]], species_crown(out$p$strategies[[1]], out$control))
   expect_true(all(c("opt_psi_leaf", "Tleaf", "area_leaf") %in% names(stand$rows)))
@@ -39,6 +39,22 @@ test_that("a TF24 plant_run realises with crowns from its own shape and draws", 
   expect_true(all(is.finite(long$light_crown)))
   data <- page_data(stand)
   expect_named(data$rows, c("size", "crown_scale", "stem_diameter"))
+})
+
+test_that("a run's own shading model shapes the crowns drawn", {
+  skip_if_not_installed("plant")
+  ## A tidied run's strategies carry no shading model, so the crowns must be
+  ## read under the run's control: a soft-box run draws soft-box crowns.
+  soft <- plant::control(shading_model = "flat-top-soft-box",
+                         node_density_coordinate = "birth_date")
+  p <- plant::default_parameters("FF16", quiet = TRUE)
+  p$max_patch_lifetime <- 10
+  p <- plant::add_strategies(p, plant::trait_matrix(0.0825, "lma"), birth_rate = 20)
+  run <- plant::run(p, control = soft, record = "steps")
+  stand <- realise_stand(run, side = 10, min_size = 0.5)
+  s <- p$strategies[[1]]
+  expect_equal(stand$crowns[[1]], species_crown(s, soft))
+  expect_false(isTRUE(all.equal(stand$crowns[[1]], species_crown(s))))
 })
 
 test_that("a K93 plant_run realises as stems in its own units and draws", {
@@ -66,6 +82,26 @@ test_that("a K93 plant_run realises as stems in its own units and draws", {
   expect_identical(data$meta$size_units, "cm")
   ## The default threshold is 10 cm of stem diameter.
   expect_identical(realise_stand(run, side = 5)$meta$min_size, 10)
+})
+
+test_that("K93 stems spread over the patch", {
+  skip_if_not_installed("plant")
+  stand <- realise_stand(k93_run(), side = 20)
+  long <- stand_long(stand)
+  last <- long[long$frame == max(long$frame), ]
+  expect_gt(nrow(last), 200)
+  ## No 5 x 5 m quadrat holds much more than its 1/16 share of the stems.
+  q <- table(cut(last$x, seq(0, 20, 5)), cut(last$y, seq(0, 20, 5)))
+  expect_lt(max(q) / sum(q), 2 / 16)
+})
+
+test_that("a K93 stand with no stems large enough still expands and draws", {
+  skip_if_not_installed("plant")
+  stand <- realise_stand(k93_run(), side = 5, min_size = 1e4)
+  expect_equal(nrow(stand$trees), 0)
+  expect_equal(nrow(stand_long(stand)), 0)
+  data <- page_data(stand)
+  expect_length(data$trees$frames, 0)
 })
 
 test_that("K93 counts follow plant's integral above the threshold", {

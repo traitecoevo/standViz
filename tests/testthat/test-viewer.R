@@ -43,4 +43,7 @@ test_that("a stand with no tree tall enough still prints and writes", {
   stand <- realise_stand(ff16_run(), side = 5, min_size = 1000)
   expect_equal(nrow(stand$trees), 0)
   expect_output(print(stand), "up to 0 at once")
+  file <- withr::local_tempfile(fileext = ".html")
+  expect_silent(write_viewer(stand, file))
+  expect_true(file.exists(file))
 })
