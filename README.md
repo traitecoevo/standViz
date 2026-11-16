@@ -34,6 +34,8 @@ Only FF16 runs are supported so far. See [PLAN.md](PLAN.md) for what comes next:
 remotes::install_github("traitecoevo/standViz")
 ```
 
+This also installs the `plant` commit that `DESCRIPTION` pins, replacing any other `plant` in that library.
+
 The package was rebuilt in 2026. The 2016 `trees3D` code (`rgl` crowns, adapted from Remko Duursma's Maeswrap) remains in the git history.
 
 ## Plant family

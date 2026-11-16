@@ -31,17 +31,14 @@
 #' @export
 realise_stand <- function(results, side = 20, frames_per_year = 2,
                           min_height = 1.5, lad = 1, seed = 1) {
-  if (inherits(results, "plant_run")) {
-    stop("Give realise_stand() the tidied run: plant::tidy(res), from a run ",
-         "with record = \"steps\"", call. = FALSE)
+  ## A plant_run, its $solver and a tidied stochastic run carry no $p.
+  if (!inherits(results$p, "Parameters")) {
+    stop("realise_stand() takes a tidied deterministic run: ",
+         "plant::tidy(plant::run(p, ..., record = \"steps\"))", call. = FALSE)
   }
   model <- stand_model(results$p)
   if (model != "FF16") {
     stop("Only FF16 runs can be realised so far, not ", model, call. = FALSE)
-  }
-  if (!"sample_size_distribution" %in% getNamespaceExports("plant")) {
-    stop("realise_stand() needs a plant with sample_size_distribution() ",
-         "(traitecoevo/plant#722)", call. = FALSE)
   }
   with_seed(seed, {
     sp <- results$species

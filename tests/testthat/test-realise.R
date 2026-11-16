@@ -44,9 +44,12 @@ test_that("positions are seeded and leave the caller's random state alone", {
   expect_true(all(a$trees$x >= 0 & a$trees$x <= 10))
 })
 
-test_that("a plant_run is refused until it is tidied", {
+test_that("anything but a tidied deterministic run is refused", {
+  ## A plant_run, its solver, and a tidied stochastic run carry no $p.
   expect_error(realise_stand(structure(list(), class = "plant_run")),
-               "tidied run")
+               "tidied deterministic run")
+  expect_error(realise_stand(list(time = 1, species = list(), env = list())),
+               "tidied deterministic run")
 })
 
 test_that("only FF16 runs are accepted", {
