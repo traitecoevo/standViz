@@ -210,9 +210,11 @@ plot_by_size <- function(x, ages = NULL) {
   rates <- list(growth = backward(d$height) / dt,
                 mortality = backward(d$mortality) / dt,
                 fecundity = backward(d$fecundity) / dt)
-  names(rates) <- c(sprintf("Growth (%s yr\u207b\u00b9)", size$size_units),
-                    "Mortality (yr\u207b\u00b9)",
-                    "Fecundity (offspring yr\u207b\u00b9)")
+  ## Plotmath, parsed by the strip labeller: a superscript minus character
+  ## is missing from some devices' fonts, as in other panels' axis labels.
+  names(rates) <- c(sprintf("Growth~(%s~yr^{-1})", size$size_units),
+                    "Mortality~(yr^{-1})",
+                    "Fecundity~(offspring~yr^{-1})")
   keep <- d$time %in% closest_times(d$time, ages)
   long <- do.call(rbind, lapply(names(rates), function(v) {
     data.frame(time = d$time[keep], species = as.character(d$species[keep]),
@@ -232,6 +234,7 @@ plot_by_size <- function(x, ages = NULL) {
     ggplot2::facet_grid(ggplot2::vars(.data$rate),
                         ggplot2::vars(.data$species),
                         scales = "free", labeller = ggplot2::labeller(
+                          .rows = ggplot2::label_parsed,
                           .cols = function(s) paste("Species", s))) +
     ggplot2::labs(x = size_label(res), y = NULL, colour = "Patch age (yr)") +
     ggplot2::theme_classic()

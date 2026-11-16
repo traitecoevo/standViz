@@ -1,6 +1,6 @@
 ---
-## stand_report() sets the title and subtitle.
-title: "Stand report"
+## stand_report() gives the title and subtitle; a title set here would
+## override the one it gives.
 format:
   html:
     embed-resources: true
@@ -8,6 +8,10 @@ format:
     toc-depth: 2
     fig-width: 9
     fig-dpi: 110
+## Quarto otherwise rewrites any raw HTML table it finds, even one escaped
+## inside the viewer's srcdoc, which cuts the viewer off. The report's own
+## tables are Markdown.
+html-table-processing: none
 execute:
   echo: false
   warning: false
@@ -84,7 +88,7 @@ if (!is.null(contents$viewer)) {
   srcdoc <- gsub("\"", "&quot;", gsub("&", "&amp;", contents$viewer,
                                       fixed = TRUE), fixed = TRUE)
   cat("```{=html}\n<iframe title=\"The stand in 3D\" style=\"width: 100%;",
-      "height: 640px; border: 0;\" srcdoc=\"", srcdoc, "\"></iframe>\n```\n",
+      "height: 720px; border: 0;\" srcdoc=\"", srcdoc, "\"></iframe>\n```\n",
       sep = "")
 }
 ```

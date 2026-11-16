@@ -135,7 +135,10 @@ report_inputs <- function(res) {
     Species = seq_along(res$p$strategies),
     Label = species_labels(res$p),
     `Birth rate (m⁻² yr⁻¹)` = vapply(res$p$strategies, birth_rate_text, ""),
-    `Offspring production` = signif(res$offspring_production, 4),
+    ## As text: a table would round a rate of 1e-15 to 0.
+    `Offspring production` = vapply(res$offspring_production, function(v) {
+      format(signif(v, 4))
+    }, ""),
     check.names = FALSE)
   list(run = run, species = species,
        parameters = differing_parameters(res$p),
@@ -177,15 +180,34 @@ differing_parameters <- function(p) {
   differs <- matrix(differs, nrow = nrow(table))
   keep <- rowSums(differs) > 0
   if (!any(keep)) return(NULL)
+  blank <- function(x) ifelse(is.na(x), "", x)
   out <- data.frame(Parameter = table$name[keep],
-                    Description = table$description[keep],
-                    Unit = table$unit[keep],
+                    Description = blank(plain_text(table$description[keep])),
+                    Unit = blank(plain_text(table$unit[keep])),
                     Default = signif(default[keep], 4))
   for (k in seq_len(ncol(vals))) {
     out[[paste("Species", k)]] <- signif(vals[keep, k], 4)
   }
   rownames(out) <- NULL
   out
+}
+
+## plant's parameter documentation is written in LaTeX ("kg m$^{-2}$"); the
+## report has no maths renderer, so exponents become superscript characters
+## and the remaining markup is dropped.
+plain_text <- function(x) {
+  superscript <- function(s) {
+    chartr("-0123456789", paste0("⁻⁰¹²³⁴",
+                                 "⁵⁶⁷⁸⁹"),
+           gsub("[^-0-9]", "", s))
+  }
+  ## "$^{-2}$" and "$^2$", and plant's one "^${2}$".
+  exponent <- "\\$\\^\\{?-?[0-9]+\\}?\\$|\\^\\$\\{-?[0-9]+\\}\\$"
+  ok <- !is.na(x)
+  at <- gregexpr(exponent, x[ok])
+  regmatches(x[ok], at) <- lapply(regmatches(x[ok], at), superscript)
+  x <- gsub("\\\\(textrm|rm)\\s*", "", x)
+  gsub("[$}{]", "", x)
 }
 
 ## The run's numerical settings that differ from plant's defaults.
