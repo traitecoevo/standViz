@@ -28,7 +28,7 @@ FF16, TF24 and K93 runs can all be realised and drawn. K93's size is stem diamet
 
 ## 2D figures
 
-Each figure takes a run (a `plant_run` or its tidied list) and returns a ggplot, so it can be restyled with `+ theme(...)`:
+Each figure takes a run (a `plant_run` or its tidied list) and returns a ggplot, restyled with `+ theme(...)`, or for the figures of several panels a patchwork, restyled throughout with `& theme(...)`:
 
 - `plot_size_distribution()`: each cohort's size through time, shaded by density.
 - `plot_stand_totals()`: density, leaf area index, basal area and biomass by tissue through time.

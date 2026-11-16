@@ -159,10 +159,17 @@ test_that("the tissues stacked make up plant's total biomass", {
   ## The panel stacks plant's stand total of each tissue, over both species.
   p <- built(stand_panels(res)$biomass)
   totals <- plant::integrate_over_size_distribution(s)
-  leaf <- tapply(totals$mass_leaf, totals$time, sum)
-  d <- p$data[p$data$tissue == "Leaf", ]
-  expect_equal(d$value, as.numeric(leaf))
-  expect_equal(d$time, as.numeric(names(leaf)))
+  for (k in names(biomass_tissues)) {
+    tissue <- tapply(totals[[biomass_tissues[[k]]]], totals$time, sum)
+    d <- p$data[p$data$tissue == k, ]
+    expect_equal(d$value, as.numeric(tissue))
+    expect_equal(d$time, as.numeric(names(tissue)))
+  }
+  ## Stacked, they come to plant's total biomass, within the 0.2% by which
+  ## its spline integral is not linear.
+  stacked <- tapply(p$data$value, p$data$time, sum)
+  mass_total <- tapply(totals$mass_total, totals$time, sum)
+  expect_equal(as.numeric(stacked), as.numeric(mass_total), tolerance = 5e-3)
 })
 
 test_that("basal area is plant's stem area per hectare", {
@@ -188,8 +195,16 @@ test_that("rates by size are differences along each node's trajectory", {
   b <- s[s$time == t1, ]
   m <- merge(a, b, by = c("species", "node"))
   growth <- (m$height.y - m$height.x) / (t1 - t0)
-  got <- d$value[match(paste(m$species, m$node), paste(d$species, d$node))]
+  key <- function(x) paste(x$species, x$node)
+  got <- d$value[match(key(m), key(d))]
   expect_equal(got, growth)
+  ## Mortality and fecundity, each over the same step.
+  for (v in c("mortality", "fecundity")) {
+    r <- p$data[p$data$rate == levels(p$data$rate)[match(v, c("growth",
+      "mortality", "fecundity"))], ]
+    rate <- (m[[paste0(v, ".y")]] - m[[paste0(v, ".x")]]) / (t1 - t0)
+    expect_equal(r$value[match(key(m), key(r))], rate)
+  }
   ## The default ages reach the run's end.
   expect_equal(max(plot_by_size(res)$data$time), max(s$time))
 })
@@ -213,6 +228,22 @@ test_that("the light profile is the run's own, at the ages asked for", {
   expect_length(times, 2)
   expect_equal(p$data$light_availability,
                light$light_availability[light$time %in% times])
+})
+
+test_that("each age has its own legend entry", {
+  ## Two significant digits would print 105.32 as 110, and 40 and 40.4 as one.
+  a <- age_factor(c(40, 40.4, 105.32, 40))
+  expect_identical(levels(a), c("40", "40.4", "105"))
+  expect_identical(as.integer(a), c(1L, 2L, 3L, 1L))
+  expect_identical(levels(age_factor(c(1.0001, 1.0002))), c("1.0001", "1.0002"))
+})
+
+test_that("bad ages are refused by name", {
+  skip_if_not_installed("plant")
+  for (ages in list(numeric(0), NA_real_, "5")) {
+    expect_error(closest_times(1:3, ages), "`ages` must be patch ages")
+  }
+  expect_error(plot_by_size(ff16_run(), ages = 0), "No rates at those ages")
 })
 
 test_that("ages are drawn at the nearest collected time", {

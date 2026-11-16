@@ -220,8 +220,12 @@ plot_by_size <- function(x, ages = NULL) {
                value = rates[[v]][keep])
   }))
   long$rate <- factor(long$rate, levels = names(rates))
-  long$age <- factor(signif(long$time, 2))
+  long$age <- age_factor(long$time)
   long <- long[is.finite(long$value), ]
+  if (nrow(long) == 0) {
+    stop("No rates at those ages: a rate needs a collected step before it",
+         call. = FALSE)
+  }
   ggplot2::ggplot(long, ggplot2::aes(.data$size, .data$value,
                                      colour = .data$age, group = .data$age)) +
     ggplot2::geom_line() +
@@ -250,7 +254,7 @@ plot_light_profile <- function(x, ages = NULL) {
          "(env$light_availability)", call. = FALSE)
   }
   d <- light[light$time %in% closest_times(light$time, ages), ]
-  d$age <- factor(signif(d$time, 2))
+  d$age <- age_factor(d$time)
   ggplot2::ggplot(d, ggplot2::aes(.data$light_availability, .data$height,
                                   colour = .data$age, group = .data$age)) +
     ggplot2::geom_path() +
@@ -285,11 +289,34 @@ stand_figures <- function(x, ages = NULL) {
 ## roughly doubling scale of ages up to the run's end.
 closest_times <- function(times, ages = NULL) {
   times <- sort(unique(times))
+  if (!is.null(ages) && (!is.numeric(ages) || length(ages) == 0 ||
+                         anyNA(ages))) {
+    stop("`ages` must be patch ages in years", call. = FALSE)
+  }
   if (is.null(ages)) {
     ages <- c(0.1, 1, 2.5, 5, 10, 20, 40, 80, 160)
     ages <- c(ages[ages < max(times)], max(times))
   }
   unique(times[vapply(ages, function(a) which.min(abs(times - a)), 1L)])
+}
+
+## Patch ages as a legend: each collected time its own level, in order,
+## labelled with the fewest significant digits (three at least) that keep the
+## labels distinct.
+age_factor <- function(time) {
+  u <- sort(unique(time))
+  for (digits in 3:15) {
+    labels <- as.character(signif(u, digits))
+    if (!anyDuplicated(labels)) break
+  }
+  factor(time, levels = u, labels = labels)
+}
+
+## A column summed over species at each collected time, grouping on the times
+## themselves rather than on their printed names.
+sum_by_time <- function(value, time) {
+  u <- sort(unique(time))
+  data.frame(time = u, value = vapply(split(value, match(time, u)), sum, 0))
 }
 
 ## plot_stand_totals()'s panels, named by what each draws, leaving out any
@@ -332,8 +359,7 @@ biomass_panel <- function(totals) {
   tissues <- biomass_tissues[biomass_tissues %in% names(totals)]
   if (length(tissues) == 0) return(NULL)
   d <- do.call(rbind, lapply(names(tissues), function(k) {
-    s <- tapply(totals[[tissues[[k]]]], totals$time, sum)
-    data.frame(time = as.numeric(names(s)), tissue = k, value = as.numeric(s))
+    cbind(sum_by_time(totals[[tissues[[k]]]], totals$time), tissue = k)
   }))
   d$tissue <- factor(d$tissue, levels = rev(names(tissues)))
   ggplot2::ggplot(d, ggplot2::aes(.data$time, .data$value,
