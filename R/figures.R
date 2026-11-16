@@ -168,3 +168,178 @@ node_panel <- function(species, column, size, ylab) {
     ggplot2::labs(x = "Time (years)", y = ylab, colour = size) +
     ggplot2::theme_classic()
 }
+
+#' Stand totals through time
+#'
+#' Totals per unit ground area, integrated over the size distribution by
+#' plant: plant density, leaf area index and basal area by species, and
+#' biomass by tissue over all species. Each panel is drawn where the run
+#' carries its sizes; a K93 run, which has no leaf area or tissue masses,
+#' draws density and basal area.
+#'
+#' @inheritParams plot_water
+#' @return A patchwork of ggplots.
+#' @export
+plot_stand_totals <- function(x) {
+  patchwork::wrap_plots(stand_panels(tidied_run(x)), ncol = 2)
+}
+
+#' Growth, mortality and fecundity by size
+#'
+#' Each node's rates at chosen patch ages, against its size: growth in size,
+#' the mortality rate and the fecundity rate, by species. Each rate is over
+#' the interval between collected steps that ends at the age drawn, along the
+#' node's trajectory: of its size, and of plant's cumulative mortality and
+#' fecundity.
+#'
+#' @inheritParams plot_water
+#' @param ages Patch ages (years) to draw; each is drawn at the nearest
+#'   collected time. The default spans the run on a roughly doubling scale.
+#' @return A ggplot.
+#' @export
+plot_by_size <- function(x, ages = NULL) {
+  res <- tidied_run(x)
+  size <- plant::model_size(res)
+  d <- res$species[!is.na(res$species$density), ]
+  d <- d[order(d$species, d$node, d$time), ]
+  node <- interaction(d$species, d$node, drop = TRUE)
+  backward <- function(v) {
+    stats::ave(v, node, FUN = function(y) c(NA, diff(y)))
+  }
+  dt <- backward(d$time)
+  rates <- list(growth = backward(d$height) / dt,
+                mortality = backward(d$mortality) / dt,
+                fecundity = backward(d$fecundity) / dt)
+  names(rates) <- c(sprintf("Growth (%s yr\u207b\u00b9)", size$size_units),
+                    "Mortality (yr\u207b\u00b9)",
+                    "Fecundity (offspring yr\u207b\u00b9)")
+  keep <- d$time %in% closest_times(d$time, ages)
+  long <- do.call(rbind, lapply(names(rates), function(v) {
+    data.frame(time = d$time[keep], species = as.character(d$species[keep]),
+               node = d$node[keep], size = d$height[keep], rate = v,
+               value = rates[[v]][keep])
+  }))
+  long$rate <- factor(long$rate, levels = names(rates))
+  long$age <- factor(signif(long$time, 2))
+  long <- long[is.finite(long$value), ]
+  ggplot2::ggplot(long, ggplot2::aes(.data$size, .data$value,
+                                     colour = .data$age, group = .data$age)) +
+    ggplot2::geom_line() +
+    ggplot2::facet_grid(ggplot2::vars(.data$rate),
+                        ggplot2::vars(.data$species),
+                        scales = "free", labeller = ggplot2::labeller(
+                          .cols = function(s) paste("Species", s))) +
+    ggplot2::labs(x = size_label(res), y = NULL, colour = "Patch age (yr)") +
+    ggplot2::theme_classic()
+}
+
+#' Light through the canopy
+#'
+#' The fraction of full light reaching each size, as the run's environment
+#' records it, at chosen patch ages. For a model sized by height this is light
+#' by height; for K93 it is light by stem diameter.
+#'
+#' @inheritParams plot_by_size
+#' @return A ggplot.
+#' @export
+plot_light_profile <- function(x, ages = NULL) {
+  res <- tidied_run(x)
+  light <- res$env$light_availability
+  if (is.null(light$light_availability)) {
+    stop("plot_light_profile() needs a run that records light ",
+         "(env$light_availability)", call. = FALSE)
+  }
+  d <- light[light$time %in% closest_times(light$time, ages), ]
+  d$age <- factor(signif(d$time, 2))
+  ggplot2::ggplot(d, ggplot2::aes(.data$light_availability, .data$height,
+                                  colour = .data$age, group = .data$age)) +
+    ggplot2::geom_path() +
+    ggplot2::scale_x_continuous(limits = c(0, 1)) +
+    ggplot2::labs(x = "Light (fraction of full sun)", y = size_label(res),
+                  colour = "Patch age (yr)") +
+    ggplot2::theme_classic()
+}
+
+#' Every figure that applies to a run
+#'
+#' The 2D figures as a named list, each drawn only where the run carries what
+#' it reads: the water figure for a run that records soil water, for example.
+#' The stand report is built from this list.
+#'
+#' @inheritParams plot_by_size
+#' @return A named list of ggplots and patchworks.
+#' @export
+stand_figures <- function(x, ages = NULL) {
+  res <- tidied_run(x)
+  figures <- list(
+    size_distribution = plot_size_distribution(res),
+    stand_totals = plot_stand_totals(res),
+    by_size = plot_by_size(res, ages),
+    light_profile = if (!is.null(res$env$light_availability$light_availability))
+      plot_light_profile(res, ages),
+    water = if (!is.null(res$env$soil_moist)) plot_water(res))
+  figures[!vapply(figures, is.null, logical(1))]
+}
+
+## The collected times nearest to each requested age, or by default to a
+## roughly doubling scale of ages up to the run's end.
+closest_times <- function(times, ages = NULL) {
+  times <- sort(unique(times))
+  if (is.null(ages)) {
+    ages <- c(0.1, 1, 2.5, 5, 10, 20, 40, 80, 160)
+    ages <- c(ages[ages < max(times)], max(times))
+  }
+  unique(times[vapply(ages, function(a) which.min(abs(times - a)), 1L)])
+}
+
+## plot_stand_totals()'s panels, named by what each draws, leaving out any
+## whose sizes the run does not carry.
+stand_panels <- function(res) {
+  totals <- plant::integrate_over_size_distribution(
+    plant::expand_state(res)$species)
+  totals$species <- as.character(totals$species)
+  by_species <- function(column, ylab, scale = 1) {
+    if (is.null(totals[[column]])) return(NULL)
+    d <- data.frame(time = totals$time, species = totals$species,
+                    value = totals[[column]] * scale)
+    ggplot2::ggplot(d, ggplot2::aes(.data$time, .data$value,
+                                    colour = .data$species)) +
+      ggplot2::geom_line(na.rm = TRUE) +
+      ggplot2::labs(x = "Time (years)", y = ylab, colour = "Species") +
+      ggplot2::theme_classic()
+  }
+  panels <- list(
+    density = by_species("density", expression(Density ~ (plants ~ m^{-2}))),
+    area_leaf = by_species("area_leaf",
+                           expression(Leaf ~ area ~ index ~ (m^2 ~ m^{-2}))),
+    basal_area = by_species("area_stem",
+                            expression(Basal ~ area ~ (m^2 ~ ha^{-1})),
+                            scale = 1e4),
+    biomass = biomass_panel(totals))
+  panels[!vapply(panels, is.null, logical(1))]
+}
+
+## The tissues that make up a plant's mass_total in plant's expand_state().
+biomass_tissues <- c(Leaf = "mass_leaf", Sapwood = "mass_sapwood",
+                     Bark = "mass_bark", Heartwood = "mass_heartwood",
+                     Root = "mass_root", "Coarse root" = "mass_coarse_root")
+
+## Biomass by tissue, summed over species, stacked. Each plant's tissues add
+## to its mass_total exactly; their stand totals add to the total of mass_total
+## only to about 0.2%, as plant integrates each over birth date through a
+## monotone spline, which is not linear in the values.
+biomass_panel <- function(totals) {
+  tissues <- biomass_tissues[biomass_tissues %in% names(totals)]
+  if (length(tissues) == 0) return(NULL)
+  d <- do.call(rbind, lapply(names(tissues), function(k) {
+    s <- tapply(totals[[tissues[[k]]]], totals$time, sum)
+    data.frame(time = as.numeric(names(s)), tissue = k, value = as.numeric(s))
+  }))
+  d$tissue <- factor(d$tissue, levels = rev(names(tissues)))
+  ggplot2::ggplot(d, ggplot2::aes(.data$time, .data$value,
+                                  fill = .data$tissue)) +
+    ggplot2::geom_area() +
+    ggplot2::labs(x = "Time (years)", y = expression(Biomass ~ (kg ~ m^{-2})),
+                  fill = "Tissue") +
+    ggplot2::theme_classic()
+}

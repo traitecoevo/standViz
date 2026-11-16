@@ -120,3 +120,104 @@ test_that("water panels attach by the columns a run carries", {
   expect_false("transpiration_per_leaf_area" %in% names(panels))
   expect_error(plot_water(ff16_run()), "needs a run that records soil water")
 })
+
+test_that("every model gets each figure it has data for, and each draws", {
+  skip_if_not_installed("plant")
+  ff16 <- stand_figures(ff16_run())
+  expect_named(ff16, c("size_distribution", "stand_totals", "by_size",
+                       "light_profile"))
+  k93 <- stand_figures(k93_run())
+  expect_named(k93, names(ff16))
+  tf24 <- stand_figures(tf24_run())
+  expect_named(tf24, c(names(ff16), "water"))
+  for (f in c(ff16, k93, tf24)) {
+    if (inherits(f, "patchwork")) {
+      for (i in seq_along(f$patches$plots)) built(f[[i]])
+      built(f[[length(f$patches$plots) + 1]])
+    } else {
+      built(f)
+    }
+  }
+})
+
+test_that("stand totals draw the sizes a run carries", {
+  skip_if_not_installed("plant")
+  expect_named(stand_panels(ff16_run()),
+               c("density", "area_leaf", "basal_area", "biomass"))
+  ## K93 has stem sizes, but no leaf area or tissue masses.
+  expect_named(stand_panels(plant::tidy(k93_run())), c("density", "basal_area"))
+})
+
+test_that("the tissues stacked make up plant's total biomass", {
+  skip_if_not_installed("plant")
+  res <- ff16_run()
+  ## Every plant's tissues add to its mass_total.
+  s <- plant::expand_state(res)$species
+  live <- s[!is.na(s$density), ]
+  expect_equal(rowSums(as.data.frame(live)[biomass_tissues]), live$mass_total,
+               tolerance = 1e-12)
+  ## The panel stacks plant's stand total of each tissue, over both species.
+  p <- built(stand_panels(res)$biomass)
+  totals <- plant::integrate_over_size_distribution(s)
+  leaf <- tapply(totals$mass_leaf, totals$time, sum)
+  d <- p$data[p$data$tissue == "Leaf", ]
+  expect_equal(d$value, as.numeric(leaf))
+  expect_equal(d$time, as.numeric(names(leaf)))
+})
+
+test_that("basal area is plant's stem area per hectare", {
+  skip_if_not_installed("plant")
+  res <- plant::tidy(k93_run())
+  d <- ggplot2::ggplot_build(stand_panels(res)$basal_area)$data[[1]]
+  totals <- plant::integrate_over_size_distribution(
+    plant::expand_state(res)$species)
+  expect_equal(sort(d$y), sort(totals$area_stem * 1e4))
+})
+
+test_that("rates by size are differences along each node's trajectory", {
+  skip_if_not_installed("plant")
+  res <- ff16_run()
+  p <- built(plot_by_size(res, ages = 20))
+  d <- p$data[p$data$rate == levels(p$data$rate)[1], ]
+  t1 <- unique(d$time)
+  expect_length(t1, 1)
+  ## Each node's growth over the step that ends at t1.
+  s <- res$species[!is.na(res$species$density), ]
+  t0 <- max(s$time[s$time < t1])
+  a <- s[s$time == t0, ]
+  b <- s[s$time == t1, ]
+  m <- merge(a, b, by = c("species", "node"))
+  growth <- (m$height.y - m$height.x) / (t1 - t0)
+  got <- d$value[match(paste(m$species, m$node), paste(d$species, d$node))]
+  expect_equal(got, growth)
+  ## The default ages reach the run's end.
+  expect_equal(max(plot_by_size(res)$data$time), max(s$time))
+})
+
+test_that("rates and light are drawn against the model's own size", {
+  skip_if_not_installed("plant")
+  run <- k93_run()
+  p <- built(plot_by_size(run))
+  expect_identical(p$labels$x, "Stem diameter (cm)")
+  expect_match(levels(p$data$rate)[1], "cm yr", fixed = TRUE)
+  expect_identical(built(plot_light_profile(run))$labels$y,
+                   "Stem diameter (cm)")
+})
+
+test_that("the light profile is the run's own, at the ages asked for", {
+  skip_if_not_installed("plant")
+  res <- ff16_run()
+  p <- built(plot_light_profile(res, ages = c(5, 20)))
+  light <- res$env$light_availability
+  times <- closest_times(light$time, c(5, 20))
+  expect_length(times, 2)
+  expect_equal(p$data$light_availability,
+               light$light_availability[light$time %in% times])
+})
+
+test_that("ages are drawn at the nearest collected time", {
+  times <- c(0, 0.5, 1.2, 3, 7.9)
+  expect_equal(closest_times(times, c(1, 8)), c(1.2, 7.9))
+  expect_equal(closest_times(times, c(1, 1.1)), 1.2)
+  expect_equal(closest_times(times), c(0, 1.2, 3, 7.9))
+})
