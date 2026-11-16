@@ -1,16 +1,14 @@
-# standviz
+# plantpress
 
 3D views of forests simulated with [`plant`](https://github.com/traitecoevo/plant): a stand growing through time, drawn as individual trees in an interactive page in the browser.
 
-> `standviz` is a working name; the package will be renamed.
-
-`plant` simulates a stand as a density of plants, not as individual trees. `standviz` draws explicit trees from it with `plant::sample_size_distribution()`, which follows the same trees from frame to frame, so a stand can be animated: each tree grows with its cohort, the number of trees follows the model's density, and dead trees never come back. Every size comes from the strategy's own allometry (`plant::expand_state()`), and crowns are shaped by the model's vertical leaf distribution. Positions are illustrative, because `plant` is spatially implicit.
+`plant` simulates a stand as a density of plants, not as individual trees. `plantpress` draws explicit trees from it with `plant::sample_size_distribution()`, which follows the same trees from frame to frame, so a stand can be animated: each tree grows with its cohort, the number of trees follows the model's density, and dead trees never come back. Every size comes from the strategy's own allometry (`plant::expand_state()`), and crowns are shaped by the model's vertical leaf distribution. Positions are illustrative, because `plant` is spatially implicit.
 
 ## Example
 
 ```r
 library(plant)
-library(standviz)
+library(plantpress)
 
 p <- default_parameters("FF16", quiet = TRUE)
 p$max_patch_lifetime <- 100
@@ -31,7 +29,7 @@ Only FF16 runs are supported so far. See [PLAN.md](PLAN.md) for what comes next:
 ## Install
 
 ```r
-remotes::install_github("traitecoevo/standViz")
+remotes::install_github("traitecoevo/plantpress")
 ```
 
 This also installs the `plant` commit that `DESCRIPTION` pins, replacing any other `plant` in that library.
@@ -40,6 +38,6 @@ The package was rebuilt in 2026. The 2016 `trees3D` code (`rgl` crowns, adapted 
 
 ## Plant family
 
-`standviz` is part of the **plant family** of packages in the [`traitecoevo`](https://github.com/traitecoevo) org, built around the [`plant`](https://github.com/traitecoevo/plant) forest model. Docs hub: <https://traitecoevo.github.io/overstorey/>.
+`plantpress` is part of the **plant family** of packages in the [`traitecoevo`](https://github.com/traitecoevo) org, built around the [`plant`](https://github.com/traitecoevo/plant) forest model. Docs hub: <https://traitecoevo.github.io/overstorey/>.
 
 **Contributing:** please skim the family [issue guide](https://github.com/traitecoevo/plant-meta/blob/main/governance/issue-guide.md) before filing. Issues across the family are triaged on [board #5](https://github.com/orgs/traitecoevo/projects/5), and cross-package context lives in [`plant-meta`](https://github.com/traitecoevo/plant-meta).

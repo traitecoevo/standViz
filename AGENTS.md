@@ -1,6 +1,6 @@
-# `standviz` — developer guide for agents
+# `plantpress` — developer guide for agents
 
-`standviz` turns `plant` output into 3D views: it draws explicit, persistent trees from a run's cohort size distributions (`realise_stand()`), and writes an interactive three.js page of the stand growing through time (`write_viewer()`). `standviz` is a working name; a rename is planned.
+`plantpress` turns `plant` output into 3D views: it draws explicit, persistent trees from a run's cohort size distributions (`realise_stand()`), and writes an interactive three.js page of the stand growing through time (`write_viewer()`). It is becoming plant's home for figures and reports as well (`PLAN.md`).
 
 **Read [`PLAN.md`](PLAN.md) first.** It holds the decisions and the invariants a change could break without noticing: geometry comes from the model's allometry, trees persist, counts follow the model, and positions are a visual device, not model output.
 
@@ -15,7 +15,7 @@
 ## Build & test
 
 - `make install` (runs roxygen first), `make test`, `make check`, `make demo`.
-- standviz is built against the plant commit pinned in `DESCRIPTION`'s `Remotes`, which `.plant-interface-version` also records with the breaking changes absorbed so far. Build that commit, because the site-library copy can lag.
+- plantpress is built against the plant commit pinned in `DESCRIPTION`'s `Remotes`, which `.plant-interface-version` also records with the breaking changes absorbed so far. Build that commit, because the site-library copy can lag.
 - Runs must carry density in birth date: `plant::control(node_density_coordinate = "birth_date")`.
 - To look at the viewer, write a page and screenshot it with headless Chrome: `--headless=new --use-angle=swiftshader --enable-unsafe-swiftshader --screenshot`. Headless Chrome will not go narrower than about 500 px, so a narrower screenshot is cropped rather than reflowed.
 
@@ -27,7 +27,7 @@
 
 ## Plant family
 
-`standviz` is part of the **plant family** in the [`traitecoevo`](https://github.com/traitecoevo)
+`plantpress` is part of the **plant family** in the [`traitecoevo`](https://github.com/traitecoevo)
 org — a hub-and-spoke set of packages built around the
 [`plant`](https://github.com/traitecoevo/plant) size- and trait-structured forest model.
 

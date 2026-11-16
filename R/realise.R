@@ -23,7 +23,7 @@
 #' @param lad Leaf area per crown volume (m^2 m^-3); see [crown_scale()].
 #' @param seed Random seed for the sample and the positions. The caller's random
 #'   state is left untouched.
-#' @return A `standviz_stand`: frame times, the light profile through time, one
+#' @return A `plantpress_stand`: frame times, the light profile through time, one
 #'   row per tree, and one row per tree per frame it is visible carrying every
 #'   state variable from the run and from [plant::expand_state()] (leaf, sapwood,
 #'   bark and root areas and masses, fecundity, net production, ...). Expand it
@@ -72,8 +72,8 @@ realise_stand <- function(results, side = 20, frames_per_year = 2,
       meta = list(model = model, side = side, lad = lad,
                   min_height = min_height, seed = seed,
                   plant_version = as.character(utils::packageVersion("plant")),
-                  standviz_version =
-                    as.character(utils::packageVersion("standviz"))),
+                  plantpress_version =
+                    as.character(utils::packageVersion("plantpress"))),
       times = times,
       species = data.frame(id = ids, label = species_labels(pars[ids]),
                            eta = eta, eta_c = crown_centre(eta)),
@@ -82,14 +82,14 @@ realise_stand <- function(results, side = 20, frames_per_year = 2,
       rows = tree_rows(rows),
       light = light_profile(results$env$light_availability, times,
                             max(sp$height)))
-    class(stand) <- "standviz_stand"
+    class(stand) <- "plantpress_stand"
     stand
   })
 }
 
 #' @export
-print.standviz_stand <- function(x, ...) {
-  cat(sprintf("<standviz_stand> %s, %d species, %g x %g m patch\n",
+print.plantpress_stand <- function(x, ...) {
+  cat(sprintf("<plantpress_stand> %s, %d species, %g x %g m patch\n",
               x$meta$model, nrow(x$species), x$meta$side, x$meta$side))
   cat(sprintf("  %d frames over %g years; %d trees ever, up to %d at once\n",
               length(x$times), max(x$times), nrow(x$trees),

@@ -2,7 +2,7 @@
 ## area: a cheap-leaved pioneer and a slower, shade-tolerant successor.
 ## Usage: Rscript inst/examples/make_demo.R [output.html]
 library(plant)
-library(standviz)
+library(plantpress)
 
 out <- commandArgs(trailingOnly = TRUE)[1]
 if (is.na(out)) out <- "ff16-two-species.html"

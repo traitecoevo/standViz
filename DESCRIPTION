@@ -1,5 +1,5 @@
-Package: standviz
-Title: 3D Visualisation of Stands Simulated with 'plant'
+Package: plantpress
+Title: Figures and 3D Views of Stands Simulated with 'plant'
 Version: 0.1.0
 Authors@R: c(
     person("Daniel", "Falster", email = "daniel.falster@unsw.edu.au",
@@ -10,6 +10,8 @@ Description: Turns the cohort size distributions simulated by the 'plant'
     stand growing through time as an interactive 3D page in the browser
     (three.js).
 License: GPL-3
+URL: https://github.com/traitecoevo/plantpress
+BugReports: https://github.com/traitecoevo/plantpress/issues
 Encoding: UTF-8
 Depends:
     R (>= 4.1.0)

@@ -1,4 +1,4 @@
-# plantpress plan (the package is `standviz` until the rename)
+# plantpress plan
 
 Figures of `plant` output: 3D views of stands from one individual to a metapopulation of patches, 2D figures of runs, and stand reports. This file holds the decisions that constrain the work; keep it current.
 
@@ -71,8 +71,8 @@ Each of these is kept through the overhaul. The three amended for three models s
 2. ~~Use plant's sampler and allometry.~~ Done: `plant::sample_size_distribution()` and `plant::expand_state()`.
 3. ~~Migrate to plant's `run()` and pin plant (standViz#10).~~ Done 2026-11-16.
 4. ~~Daniel settles the proposal (standViz#9, #11).~~ Done 2026-11-16.
-5. One plant PR with the six exports of item 9: traitecoevo/plant#800, open.
-6. The rename: GitHub, the package, the local folder, plant-meta.
+5. ~~One plant PR with the six exports of item 9.~~ Done: traitecoevo/plant#800.
+6. The rename: ~~GitHub~~ (Daniel, 2026-11-16), the package, ~~the local folder~~, plant-meta, overstorey's `contributing/how-we-work.qmd`.
 7. The restructure: one core for FF16, TF24 and K93, crowns from plant, a `plant_run` accepted, a realise-and-plot test per model. This absorbs the old "TF24 support" item.
 8. The figures move in, with plant's tests for them.
 9. overstorey moves its four pages (`guides/example-analysis.qmd`, `guides/initialising-a-patch.qmd`, `guides/tf24-hydraulics-and-acclimation.qmd`, `theory/implementation/canopy-models.qmd`) to plantpress. overstorey's `renv.lock` pins plant at `83a973ff`, so this PR moves that pin to the plant commit plantpress needs, and adds plantpress to the lock.
