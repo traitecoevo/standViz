@@ -71,7 +71,7 @@ Each of these is kept through the overhaul. The three amended for three models s
 2. ~~Use plant's sampler and allometry.~~ Done: `plant::sample_size_distribution()` and `plant::expand_state()`.
 3. Migrate to plant's `run()` and pin plant (standViz#10). Open; it lands before this plan (standViz#11), which then takes its pin invariant on rebase.
 4. ~~Daniel settles the proposal (standViz#9, #11).~~ Done 2026-11-16.
-5. One plant PR with the six exports of item 9.
+5. One plant PR with the six exports of item 9: traitecoevo/plant#800, open.
 6. The rename: GitHub, the package, the local folder, plant-meta.
 7. The restructure: one core for FF16, TF24 and K93, crowns from plant, a `plant_run` accepted, a realise-and-plot test per model. This absorbs the old "TF24 support" item.
 8. The figures move in, with plant's tests for them.
