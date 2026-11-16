@@ -5,48 +5,58 @@
 \title{Turn a plant run into persistent individual trees}
 \usage{
 realise_stand(
-  results,
+  x,
   side = 20,
   frames_per_year = 2,
-  min_height = 1.5,
+  min_size = NULL,
   lad = 1,
   seed = 1
 )
 }
 \arguments{
-\item{results}{A tidied run, \code{plant::tidy(plant::run(p, control = ctrl, record = "steps"))}, with density in birth date: \code{ctrl <- plant::control(node_density_coordinate = "birth_date")}. The \code{plant_run}
-itself is not accepted; tidy it first.}
+\item{x}{A \code{plant_run} recorded with \code{record = "steps"}, or the tidied run
+\code{plant::tidy()} gives, run with density in birth date:
+\code{plant::control(node_density_coordinate = "birth_date")}.}
 
 \item{side}{Side of the square patch drawn (m).}
 
 \item{frames_per_year}{Frame rate in model time.}
 
-\item{min_height}{Trees appear once taller than this (m). Seedlings far
-outnumber trees and are too small to see, and the viewer page grows with
-every tree-frame it carries.}
+\item{min_size}{Trees appear once larger than this, in the model's own size
+units (\code{\link[plant:model_size]{plant::model_size()}}). Seedlings far outnumber trees and are too
+small to see, and the viewer page grows with every tree-frame it carries.
+The default follows the inventory conventions: 1.5 m tall, or 10 cm of
+stem diameter.}
 
-\item{lad}{Leaf area per crown volume (m^2 m^-3); see \code{\link[=crown_scale]{crown_scale()}}.}
+\item{lad}{Leaf area per crown volume (m^2 m^-3), the one visual parameter of
+a crown: its size holds the plant's leaf area at this density.}
 
 \item{seed}{Random seed for the sample and the positions. The caller's random
 state is left untouched.}
 }
 \value{
-A \code{plantpress_stand}: frame times, the light profile through time, one
+A \code{plantpress_stand}: frame times, the light profile through time over
+the model's size, one row per species (with its crown, if it has one), one
 row per tree, and one row per tree per frame it is visible carrying every
-state variable from the run and from \code{\link[plant:expand_state]{plant::expand_state()}} (leaf, sapwood,
-bark and root areas and masses, fecundity, net production, ...). Expand it
+state variable from the run and from \code{\link[plant:expand_state]{plant::expand_state()}}. Expand it
 with \code{\link[=stand_long]{stand_long()}} or draw it with \code{\link[=write_viewer]{write_viewer()}}.
 }
 \description{
-\code{plant} simulates a stand as a density of plants over height and birth date.
+\code{plant} simulates a stand as a density of plants over size and birth date.
 This draws explicit trees from it with \code{\link[plant:sample_size_distribution]{plant::sample_size_distribution()}},
 which follows the same individuals through every frame: each grows with its
 cohort and, once dead, stays dead, and at every frame the number of trees is
-Poisson about the model's density. Leaf area and stem diameter come from the
-strategy's own allometry through \code{\link[plant:expand_state]{plant::expand_state()}}.
+Poisson about the model's density. Every size comes from the model's own
+allometry through \code{\link[plant:expand_state]{plant::expand_state()}}, and each species' crown shape
+from \code{\link[plant:canopy_profile]{plant::canopy_profile()}}.
 }
 \details{
+Any plant model can be realised. A model whose size is height (FF16, the
+TF24 family) has crowns. One sized otherwise has none: K93's size is stem
+diameter and it has no height, leaf area or crown, so its trees are stems
+alone, and none is invented. \code{\link[plant:model_size]{plant::model_size()}} says which a model is.
+
 Positions are \strong{not} from the model, which is spatially implicit. They are a
 seeded visual device: best-candidate sampling on a torus, spacing larger
-trees by crown size, so the patch tiles seamlessly.
+trees by crown (or stem) size, so the patch tiles seamlessly.
 }

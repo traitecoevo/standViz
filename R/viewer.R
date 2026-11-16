@@ -1,39 +1,3 @@
-#' One row per living tree per frame
-#'
-#' Expands a realised stand into a long table, for renderers and analyses that
-#' want every tree's size at every frame (a Blender script, a check against
-#' plant's size distribution).
-#'
-#' @param stand A `plantpress_stand` from [realise_stand()].
-#' @return A data frame with `frame`, `time`, `tree`, `species`, `x`, `y`,
-#'   `height`, `crown_scale`, `crown_radius` (widest point), `stem_diameter`
-#'   (m), `light_crown` (the canopy openness at the crown's leaf-weighted
-#'   centre), and every other state variable the stand carries, such as
-#'   `area_leaf`, `mass_live`, `fecundity` and `net_mass_production_dt`.
-#' @export
-stand_long <- function(stand) {
-  r <- stand$rows
-  tr <- stand$trees
-  k <- match(tr$species[r$tree], stand$species$id)
-  out <- data.frame(frame = r$frame, time = stand$times[r$frame], tree = r$tree,
-                    species = tr$species[r$tree], x = tr$x[r$tree], y = tr$y[r$tree],
-                    height = r$height, crown_scale = r$crown_scale,
-                    crown_radius = r$crown_scale * crown_widest(stand$species$eta)[k],
-                    stem_diameter = r$stem_diameter,
-                    light_crown = light_at(stand$light, r$frame,
-                                           r$height * stand$species$eta_c[k]))
-  cbind(out, r[setdiff(names(r), names(out))])
-}
-
-## Canopy openness at height z in frame f, linear on the light grid.
-light_at <- function(light, frame, z) {
-  g <- light$height
-  pos <- pmin(pmax((z - g[1]) / (g[2] - g[1]), 0), length(g) - 1 - 1e-9)
-  lo <- floor(pos) + 1
-  w <- pos - (lo - 1)
-  light$value[cbind(frame, lo)] * (1 - w) + light$value[cbind(frame, lo + 1)] * w
-}
-
 #' Write a stand as an interactive 3D page
 #'
 #' Writes one self-contained HTML file: the three.js stand viewer with the
@@ -50,13 +14,17 @@ light_at <- function(light, frame, z) {
 #' @param colour_by Further state variables the viewer can colour trees by, as
 #'   a named character vector of columns of `stand$rows` (every state variable
 #'   from plant and [plant::expand_state()]) with the names as button labels.
-#'   Each adds two bytes per tree per frame to the page.
+#'   Each adds two bytes per tree per frame to the page. The default offers
+#'   growth (`net_mass_production_dt`) and leaf area (`area_leaf`) where the
+#'   model has them; K93 has neither.
 #' @return `file`, invisibly.
 #' @export
 write_viewer <- function(stand, file, title = "Stand through time",
-                         standalone = TRUE,
-                         colour_by = c(Growth = "net_mass_production_dt",
-                                       `Leaf area` = "area_leaf")) {
+                         standalone = TRUE, colour_by = NULL) {
+  if (is.null(colour_by)) {
+    colour_by <- c(Growth = "net_mass_production_dt", `Leaf area` = "area_leaf")
+    colour_by <- colour_by[colour_by %in% names(stand$rows)]
+  }
   missing <- setdiff(colour_by, names(stand$rows))
   if (length(missing) > 0) {
     stop("Not in the stand: ", paste(missing, collapse = ", "), call. = FALSE)
@@ -92,31 +60,31 @@ splice <- function(text, token, value) {
 ## The viewer's contract. Frames are 0-based. Each tree's visible frames are
 ## one unbroken run, stored contiguously in the row arrays from `offset`, in
 ## frame order. Per-row values are 16-bit integers spanning the variable's
-## range; `colour` lists the extra variables offered as colours. The light
-## profile is row-major, one row per frame.
+## range: `size` (the model's size state, in its own units) and `stem_diameter`
+## (m) always, and `crown_scale` (m) for a model with crowns
+## (`meta$has_crown`), whose species then carry the crown outline the viewer
+## turns into a solid of revolution. `colour` lists the extra variables
+## offered as colours. The light profile, over the model's size, is row-major,
+## one row per frame.
 stand_json <- function(stand, colour_by = character(0)) {
   tr <- stand$trees
   r <- stand$rows
   n <- tabulate(r$tree, nrow(tr))
+  crowned <- isTRUE(stand$meta$has_crown)
+  drawn <- c(size = "height", if (crowned) c(crown_scale = "crown_scale"),
+             stem_diameter = "stem_diameter")
   x <- list(
     meta = stand$meta,
     times = stand$times,
     species = lapply(seq_len(nrow(stand$species)), function(k) {
-      ## The crown outline the viewer turns into a solid of revolution, drawn
-      ## down to the height that holds 95% of the leaf area: below it the
-      ## profile is a long, near-empty tail that reads as a funnel.
-      eta <- stand$species$eta[k]
-      u_base <- (1 - sqrt(0.95))^(1 / eta)
-      u <- u_base + (1 - u_base) * (1 - cos(seq(0, pi, length.out = 33))) / 2
-      c(as.list(stand$species[k, ]),
-        list(profile = list(u = c(u_base, u), r = c(0, crown_profile(u, eta)))))
+      out <- as.list(stand$species[k, ])
+      if (crowned) out$profile <- stand$crowns[[k]]$profile
+      out
     }),
     trees = list(species = match(tr$species, stand$species$id) - 1L,
                  x = tr$x, y = tr$y, birth = tr$birth_frame - 1L, frames = n,
                  offset = c(0L, cumsum(n)[-length(n)])),
-    rows = lapply(c(height = "height", crown_scale = "crown_scale",
-                    stem_diameter = "stem_diameter"),
-                  function(v) pack_u16(r[[v]])),
+    rows = lapply(drawn, function(v) pack_u16(r[[v]])),
     colour = lapply(seq_along(colour_by), function(i) {
       c(list(label = names(colour_by)[i], column = unname(colour_by[i])),
         pack_u16(r[[colour_by[i]]]))

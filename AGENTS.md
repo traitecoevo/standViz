@@ -6,11 +6,13 @@
 
 ## Layout
 
-- `R/realise.R`: `realise_stand()`. It samples trees with `plant::sample_size_distribution()`, takes their sizes from `plant::expand_state()`, places them, and builds the light profile.
-- `R/allometry.R`: crown drawing only (`crown_scale()`, `crown_profile()`); every other size comes from plant.
-- `R/output.R`: `stand_long()`, `write_viewer()` and the viewer's JSON contract (`stand_json()`, `pack_u16()`).
+- `R/run.R`: what a run is here (`tidied_run()`: a `plant_run` or its tidied list) and what its size measures (`run_size()`, from `plant::model_size()`). A model whose size is height has crowns; one sized otherwise (K93) is drawn by its stems. Nothing here branches on a model's name.
+- `R/realise.R`: `realise_stand()` and `stand_long()`. It samples trees with `plant::sample_size_distribution()`, takes their sizes from `plant::expand_state()`, places them, and builds the light profile over the model's size.
+- `R/crown.R`: a species' crown from `plant::canopy_profile()` (radius `sqrt(q)`, cut at 95% of the leaf area) and its size at the leaf area density `lad`; the shape is never computed here.
+- `R/viewer.R`: `write_viewer()` and the viewer's JSON contract (`stand_json()`, `pack_u16()`).
 - `inst/viewer/viewer.html`: the viewer template. It is a page fragment (no `<html>`/`<head>`); `write_viewer(standalone = TRUE)` wraps it. Tokens `__STAND_TITLE__` and `__STAND_DATA__` are filled in.
 - `inst/examples/make_demo.R`: the two-species FF16 demo.
+- `tests/testthat/test-models.R`: one realise-and-draw test per model (FF16, TF24, K93).
 
 ## Build & test
 
@@ -21,9 +23,10 @@
 
 ## Gotchas
 
-- `plant::expand_state()` pairs species with strategies by position after a `split()`, so `tree_geometry()` makes `species` a factor carrying every level, or a species with no trees would shift the pairing.
+- `plant::expand_state()` pairs species with strategies by number since plant#800; before it, splitting on the character `species` paired them wrongly from the tenth species on. Keep the pin past #800.
 - Test counts against plant's integral at collected steps, or the nearest one: a frame between steps compares with a total from a different time.
-- Tree placement is quadratic in the trees it spaces, so only large crowns are spaced from one another (see `place_trees()`).
+- Tree placement is quadratic in the trees it spaces, so only large crowns (or, with no crowns, the widest stems) are spaced from one another (see `place_trees()`).
+- A tidied run's strategies carry an empty `shading_model`; the run's own is `tidy(res)$control`, which `species_crown()` passes to plant.
 
 ## Plant family
 
