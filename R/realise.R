@@ -136,8 +136,9 @@ stand_long <- function(stand) {
   tr <- stand$trees
   k <- match(tr$species[r$tree], stand$species$id)
   crowned <- isTRUE(stand$meta$has_crown)
-  crown_scale <- if (crowned) r$crown_scale else NA_real_
-  widest <- if (crowned) vapply(stand$crowns, `[[`, 0, "widest")[k] else NA_real_
+  none <- rep(NA_real_, nrow(r))
+  crown_scale <- if (crowned) r$crown_scale else none
+  widest <- if (crowned) vapply(stand$crowns, `[[`, 0, "widest")[k] else none
   z <- if (crowned) r$height * stand$species$eta_c[k] else r$height
   out <- data.frame(frame = r$frame, time = stand$times[r$frame], tree = r$tree,
                     species = tr$species[r$tree], x = tr$x[r$tree], y = tr$y[r$tree],
@@ -197,15 +198,17 @@ tree_geometry <- function(rows, results, lad, crowned) {
 ## are spaced from the large ones only, and small trees, the great majority,
 ## are scattered uniformly. Spacing every pair is quadratic in a count that
 ## runs to tens of thousands. `r_max` is a crown's widest radius, or a stem's.
+## Stems (K93) are far narrower than any crown, so there the widest tenth are
+## spaced from each other and the rest scattered: with a single medium class,
+## every stem would be pushed away from the same few anchors and they would
+## bunch on the far side of the torus.
 place_trees <- function(trees, side, k = 12, r_big = 0.5, r_medium = 0.25) {
   n <- nrow(trees)
   x <- stats::runif(n, 0, side)
   y <- stats::runif(n, 0, side)
   r <- trees$r_max
-  ## Stems are far narrower than crowns, so they are spaced at their own scale.
   if (n > 0 && max(r) < r_medium) {
-    r_big <- r_big * max(r) / 0.5
-    r_medium <- r_medium * max(r) / 0.5
+    r_big <- r_medium <- unname(stats::quantile(r, 0.9))
   }
   birth <- trees$birth_frame
   death <- trees$death_frame
