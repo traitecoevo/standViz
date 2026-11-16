@@ -1,0 +1,96 @@
+---
+## stand_report() gives the title and subtitle; a title set here would
+## override the one it gives.
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 2
+    fig-width: 9
+    fig-dpi: 110
+## Quarto otherwise rewrites any raw HTML table it finds, even one escaped
+## inside the viewer's srcdoc, which cuts the viewer off. The report's own
+## tables are Markdown.
+html-table-processing: none
+execute:
+  echo: false
+  warning: false
+  message: false
+params:
+  contents: "contents.rds"
+---
+
+```{r}
+#| include: false
+## plantpress::stand_report() computes everything this page shows and saves
+## it beside this file; the page only lays it out. Reading the figures loads
+## the packages they keep (ggplot2, patchwork, plant, plantpress), which
+## stand_report() puts on this process's library path.
+contents <- readRDS(params$contents)
+inputs <- contents$inputs
+table <- function(d) knitr::kable(d, row.names = FALSE)
+```
+
+## Inputs
+
+```{r}
+table(inputs$run)
+```
+
+### Species
+
+Each species is labelled by the parameters that set it apart.
+
+```{r}
+table(inputs$species)
+```
+
+```{r}
+#| output: asis
+if (!is.null(inputs$parameters)) {
+  cat("### Parameters\n\n",
+      "The parameters that differ between species or from the model's",
+      "defaults. Parameters derived from them by the trade-offs are not",
+      "shown.\n\n", sep = " ")
+  print(table(inputs$parameters))
+}
+if (!is.null(inputs$control)) {
+  cat("\n\n### Numerical settings\n\n",
+      "The settings that differ from plant's defaults.\n\n")
+  print(table(inputs$control))
+}
+if (!is.null(inputs$environment)) {
+  cat("\n\n### Environment\n\n")
+  print(table(inputs$environment))
+}
+```
+
+```{r}
+#| output: asis
+## One section per figure, each in a chunk of its own height.
+for (key in names(contents$figures)) {
+  f <- contents$figures[[key]]
+  cat(knitr::knit_child(quiet = TRUE, envir = environment(), text = c(
+    sprintf("## %s", f$title), "", f$caption, "",
+    sprintf("```{r figure-%s, fig.height = %g}", gsub("_", "-", key), f$height),
+    sprintf("print(contents$figures[[\"%s\"]]$plot)", key),
+    "```")), sep = "\n")
+}
+```
+
+```{r}
+#| output: asis
+if (!is.null(contents$viewer)) {
+  cat("## The stand in 3D\n\n",
+      "Trees drawn from the run's size distributions. Their positions are",
+      "illustrative: plant is spatially implicit.\n\n", sep = " ")
+  ## Escaped onto one line, so no line of the viewer's page can close the
+  ## raw HTML block.
+  srcdoc <- gsub("&", "&amp;", contents$viewer, fixed = TRUE)
+  srcdoc <- gsub("\"", "&quot;", srcdoc, fixed = TRUE)
+  srcdoc <- gsub("\n", "&#10;", srcdoc, fixed = TRUE)
+  cat("```{=html}\n<iframe title=\"The stand in 3D\" style=\"width: 100%;",
+      "height: 720px; border: 0;\" srcdoc=\"", srcdoc, "\"></iframe>\n```\n",
+      sep = "")
+}
+```

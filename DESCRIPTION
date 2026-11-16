@@ -8,7 +8,7 @@ Authors@R: c(
 Description: Turns the cohort size distributions simulated by the 'plant'
     forest model into explicit, persistent individual trees, and renders a
     stand growing through time as an interactive 3D page in the browser
-    (three.js).
+    (three.js). Draws 2D figures of a run and assembles them into a report.
 License: GPL-3
 URL: https://github.com/traitecoevo/plantpress
 BugReports: https://github.com/traitecoevo/plantpress/issues
@@ -22,6 +22,9 @@ Imports:
     plant,
     stats
 Suggests:
+    knitr,
+    quarto (>= 1.4),
+    rmarkdown,
     testthat (>= 3.0.0),
     withr
 Remotes:
