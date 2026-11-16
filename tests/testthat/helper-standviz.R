@@ -3,13 +3,13 @@ ff16_run <- local({
   cache <- NULL
   function() {
     if (is.null(cache)) {
-      p <- plant::scm_base_parameters("FF16")
+      p <- plant::default_parameters("FF16", quiet = TRUE)
       p$max_patch_lifetime <- 40
       p <- plant::add_strategies(p, plant::trait_matrix(c(0.0825, 0.2), "lma"),
                                  birth_rate = c(20, 20))
-      cache <<- plant::run_scm(
-        p, ctrl = plant::control(node_density_coordinate = "birth_date"),
-        collect = TRUE)
+      cache <<- plant::tidy(plant::run(
+        p, control = plant::control(node_density_coordinate = "birth_date"),
+        record = "steps"))
     }
     cache
   }

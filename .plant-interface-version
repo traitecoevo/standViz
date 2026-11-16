@@ -1,0 +1,16 @@
+# The plant ref this package was last built and checked against, and the plant
+# breaking changes it has absorbed. Same convention as regnans, fieldtrial and
+# logpile.
+migrated_on: 2026-11-16
+plant_version: 2.0.0.9002
+plant_ref: develop@e41aa178 (2026-11-16, plant#794; odelia 0.11.1 @v0.11.1, phylloptim 0.37.0 @64cbde2)
+applied_breaking_changes:
+  - one-run-verb  # plant#779 (#428): run_scm(p, ctrl = ctrl, collect = TRUE) -> tidy(run(p, control = ctrl, record = "steps")); realise_stand() still takes the tidied list and refuses anything else by name. scm_base_parameters() became default_parameters(), not base_parameters(): see the next entry
+  - tradeoffs-travel-with-parameters  # plant#731: the bare base parameters attach no trade-offs, so the demo, README and tests build on default_parameters("FF16", quiet = TRUE) to keep lma deriving k_l and the other FF16 parameters, as before
+# Checked and not affected (no call sites): SCM -> DeterministicPatchRunner and
+# the scm -> x arguments (#793); stochastic deaths on an interval (#790);
+# establishment averaged over the cell on the birth-date coordinate (#788) moves
+# FF16 birth-date results, which this package draws but does not pin; TF24
+# changes (phylloptim 0.37.0, a_pl0, TF24t, TF24w, the nine parameters, #745,
+# #746, #535, #775); fitness_weighting and the fitness values on the patch
+# (#781, #460); NodeSchedule -> Schedule (#752); *_Strategy -> *_Model (#641).

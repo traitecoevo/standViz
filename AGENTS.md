@@ -15,7 +15,7 @@
 ## Build & test
 
 - `make install` (runs roxygen first), `make test`, `make check`, `make demo`.
-- standviz needs a plant with `sample_size_distribution()` (traitecoevo/plant#722 and its fix #724). Build plant from `develop`, because the site-library copy can lag.
+- standviz is built against the plant commit pinned in `DESCRIPTION`'s `Remotes`, which `.plant-interface-version` also records with the breaking changes absorbed so far. Build that commit, because the site-library copy can lag.
 - Runs must carry density in birth date: `plant::control(node_density_coordinate = "birth_date")`.
 - To look at the viewer, write a page and screenshot it with headless Chrome: `--headless=new --use-angle=swiftshader --enable-unsafe-swiftshader --screenshot`. Headless Chrome will not go narrower than about 500 px, so a narrower screenshot is cropped rather than reflowed.
 

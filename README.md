@@ -12,11 +12,11 @@
 library(plant)
 library(standviz)
 
-p <- scm_base_parameters("FF16")
+p <- default_parameters("FF16", quiet = TRUE)
 p$max_patch_lifetime <- 100
 p <- add_strategies(p, trait_matrix(c(0.0825, 0.2), "lma"), birth_rate = c(20, 20))
-results <- run_scm(p, ctrl = control(node_density_coordinate = "birth_date"),
-                   collect = TRUE)
+results <- tidy(run(p, control = control(node_density_coordinate = "birth_date"),
+                    record = "steps"))
 
 stand <- realise_stand(results, side = 20)
 write_viewer(stand, "stand.html", title = "Pioneer to successor")
@@ -33,6 +33,8 @@ Only FF16 runs are supported so far. See [PLAN.md](PLAN.md) for what comes next:
 ```r
 remotes::install_github("traitecoevo/standViz")
 ```
+
+This also installs the `plant` commit that `DESCRIPTION` pins, replacing any other `plant` in that library.
 
 The package was rebuilt in 2026. The 2016 `trees3D` code (`rgl` crowns, adapted from Remko Duursma's Maeswrap) remains in the git history.
 

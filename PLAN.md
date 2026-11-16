@@ -12,6 +12,8 @@
 
 ## Invariants (a future edit could break these without noticing)
 
+- **plant is pinned to a commit.** `DESCRIPTION`'s `Remotes` names a `develop` sha, and `.plant-interface-version` records it with the breaking changes absorbed so far. Move both together, after checking the suite against the new commit; never track `develop` unpinned.
+
 - **Sampling is plant's.** `realise_stand()` draws trees with `plant::sample_size_distribution()` (traitecoevo/plant#722, fixed in #724), which needs a run carried in birth date. Trees persist through frames and never revive, and at every frame their number is Poisson about the model's density. standviz does no sampling of its own. A test checks counts above `min_height` against `plant::integrate_over_size_distribution(lower = min_height)`.
 - **Geometry is the model, not an artist's guess.** Leaf area, stem diameter and every other size come from the strategy's own allometry through `plant::expand_state()`; standviz keeps all of its columns. Crown cross-section area at height `z` is proportional to the Yokozawa leaf density `q(z, H)`. The only free visual parameter is leaf area per crown volume (`lad`).
 - **Drawn sizes never shrink.** Height, crown scale and stem diameter take their running maximum per tree, because interpolation across a changing set of nodes can lower a followed height by under a millimetre. Every other column is plant's value.
