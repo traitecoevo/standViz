@@ -83,7 +83,7 @@ stand_json <- function(stand, colour_by = character(0)) {
     }),
     trees = list(species = match(tr$species, stand$species$id) - 1L,
                  x = tr$x, y = tr$y, birth = tr$birth_frame - 1L, frames = n,
-                 offset = c(0L, cumsum(n)[-length(n)])),
+                 offset = cumsum(n) - n),
     rows = lapply(drawn, function(v) pack_u16(r[[v]])),
     colour = lapply(seq_along(colour_by), function(i) {
       c(list(label = names(colour_by)[i], column = unname(colour_by[i])),

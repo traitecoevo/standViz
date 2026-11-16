@@ -40,16 +40,16 @@ Daniel agreed every item of the proposal in standViz#11, with one change: plant'
    - **TF24's soil water potential.** `TF24_plot_diagnostics()` recomputes it with the default retention constants written in (`1.78e-3 * (soil_moist / 0.428)^-6.57`), which is wrong whenever `a_psi`, `n_psi` or `soil_moist_sat` differs from its default or is set per layer, and ignores plant's floor on soil moisture and cap on the potential (`tf24_environment.h`). plant's `psi_from_soil_moist()` binding covers only the top layer. Record the environment's own potential, layer by layer, in the tidy output beside `soil_moist`.
 10. **Rename mechanics.** Rename `traitecoevo/standViz` to `traitecoevo/plantpress` on GitHub (the old URL redirects); then one PR renames the package (`DESCRIPTION`, `tests/testthat.R`, `system.file(package =)`, the `standviz_stand` class, README, AGENTS.md, this file); the local folder `~/GitHub/plant-family/standviz` moves to `plantpress`, with `git worktree repair` and the remote URL updated; one plant-meta PR rewrites the stale `standviz` entry in `dependencies.yml` (which still says `trees3D`, `rgl`, dormant), rewrites `AGENTS.md`'s family table and its claim that `standviz` does not link plant (it imports it, pinned), and renames the mentions in `governance/issue-guide.md`, `project-board.md`, `triage.md` and `apply-labels.sh`; overstorey's `contributing/how-we-work.qmd` names it twice. The board workflow (`add-to-project.yml`) names no repo; check that the next issue opened reaches board #5, in case the org secret `ADD_TO_PROJECT_PAT` is scoped to named repositories.
 
-## Each model today, through plant's functions (develop@e41aa178)
+## Each model today, through plant's functions (develop@0c0e2538)
 
 | | FF16 | TF24 family | K93 |
 |---|---|---|---|
 | Sampling (`sample_size_distribution()`, birth-date runs only) | yes | yes; TF24 defaults to birth date | yes |
-| Sizes from `expand_state()` | 13 columns | 13 columns | none |
-| What `height` holds | height, m | height, m | stem diameter, cm |
+| Sizes from `expand_state()` | 13 columns | 13 columns | 2 columns: `diameter_stem` (m) and `area_stem` (m²) |
+| What `height` holds (`model_size()`) | height, m | height, m | stem diameter, cm |
 | Crown | Yokozawa `q`, `eta` = 12, six shading models | the same; mean-light by default, refuses PPA and the boxes | the profile smooths basal area; no crown |
-| Profile in the tidy environment | light by height | light by height | none recorded |
-| Model-specific outputs | none | soil moisture and depth by layer, water fluxes; per node `opt_psi_leaf`, `opt_root_psi`, `transpiration`, `stom_cond_CO2`, `profit`, `Tleaf`; no soil water potential | none |
+| Profile in the tidy environment | light by height | light by height | light by stem diameter |
+| Model-specific outputs | none | soil moisture, water potential (`soil_psi`) and depth by layer, water fluxes; per node `opt_psi_leaf`, `opt_root_psi`, `transpiration`, `stom_cond_CO2`, `profit`, `Tleaf` | none |
 
 `control()`'s default coordinate, `"auto"`, puts FF16 and K93 on height and TF24 on birth date. The 2D figures read either, but `realise_stand()` needs birth date, since plant samples only from it. TF24's environment also records `soil_layer_width`.
 
