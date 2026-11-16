@@ -25,6 +25,17 @@ test_that("write_viewer embeds the stand in one page", {
   expect_false(grepl("<!doctype", paste(readLines(file), collapse = "\n"), fixed = TRUE))
 })
 
+test_that("a stand of one tree sends its trees as arrays", {
+  skip_if_not_installed("plant")
+  stand <- realise_stand(ff16_run(), side = 10, min_size = 2)
+  stand$trees <- stand$trees[1, ]
+  stand$rows <- stand$rows[stand$rows$tree == 1, ]
+  json <- as.character(stand_json(stand))
+  for (v in c("species", "x", "y", "birth", "frames", "offset")) {
+    expect_match(json, sprintf('"%s":[', v), fixed = TRUE)
+  }
+})
+
 test_that("each tree's rows sit together from its offset, one per frame", {
   skip_if_not_installed("plant")
   stand <- realise_stand(ff16_run(), side = 10, min_size = 2)
@@ -43,4 +54,7 @@ test_that("a stand with no tree tall enough still prints and writes", {
   stand <- realise_stand(ff16_run(), side = 5, min_size = 1000)
   expect_equal(nrow(stand$trees), 0)
   expect_output(print(stand), "up to 0 at once")
+  file <- withr::local_tempfile(fileext = ".html")
+  write_viewer(stand, file)
+  expect_match(paste(readLines(file), collapse = "\n"), 'id="stand-data"', fixed = TRUE)
 })

@@ -31,14 +31,24 @@ test_that("a TF24 plant_run realises with crowns from its own shape and draws", 
   expect_identical(stand$meta$model, "TF24")
   expect_true(stand$meta$has_crown)
   expect_gt(nrow(stand$trees), 0)
-  ## TF24's own crown, under the run's control.
-  out <- plant::tidy(run)
-  expect_equal(stand$crowns[[1]], species_crown(out$p$strategies[[1]], out$control))
   expect_true(all(c("opt_psi_leaf", "Tleaf", "area_leaf") %in% names(stand$rows)))
   long <- stand_long(stand)
   expect_true(all(is.finite(long$light_crown)))
   data <- page_data(stand)
   expect_named(data$rows, c("size", "crown_scale", "stem_diameter"))
+})
+
+test_that("a run's crowns take the shading model from its own control", {
+  skip_if_not_installed("plant")
+  ## The default control would give deep crowns, so a run that set another
+  ## shading model shows whether its control reached the crowns.
+  run <- birth_date_run("FF16", plant::trait_matrix(0.0825, "lma"), 10,
+                        shading_model = "flat-top-soft-box")
+  stand <- realise_stand(run, side = 10, min_size = 1)
+  s <- plant::tidy(run)$p$strategies[[1]]
+  soft <- species_crown(s, plant::control(shading_model = "flat-top-soft-box"))
+  expect_equal(stand$crowns[[1]], soft)
+  expect_false(isTRUE(all.equal(stand$crowns[[1]], species_crown(s))))
 })
 
 test_that("a K93 plant_run realises as stems in its own units and draws", {
@@ -66,6 +76,41 @@ test_that("a K93 plant_run realises as stems in its own units and draws", {
   expect_identical(data$meta$size_units, "cm")
   ## The default threshold is 10 cm of stem diameter.
   expect_identical(realise_stand(run, side = 5)$meta$min_size, 10)
+})
+
+test_that("K93 stems spread across the patch", {
+  skip_if_not_installed("plant")
+  ## On a 4 x 4 grid of quadrats an even spread puts 1/16 of the stems in each.
+  for (m in c(3, 10)) {
+    long <- stand_long(realise_stand(k93_run(), side = 20, min_size = m))
+    last <- long[long$frame == max(long$frame), ]
+    q <- table(cut(last$x, seq(0, 20, 5)), cut(last$y, seq(0, 20, 5)))
+    expect_lt(max(q) / sum(q), 2 / 16)
+  }
+})
+
+test_that("stems spread however wide the widest grow", {
+  ## An old K93 stand can hold stems as wide as crowns. Under the crowns'
+  ## spacing the few widest would anchor and the next widest bunch away from
+  ## them (a quarter to a half of them in one quadrat).
+  set.seed(1)
+  r <- c(rep(0.6, 3), rep(0.3, 300), stats::runif(1697, 0.01, 0.1))
+  trees <- data.frame(r_max = r, birth_frame = 1L, death_frame = 100L)
+  xy <- place_trees(trees, side = 20, stems = TRUE)
+  wide <- r >= 0.25
+  q <- table(cut(xy$x[wide], seq(0, 20, 5)), cut(xy$y[wide], seq(0, 20, 5)))
+  expect_lt(max(q) / sum(q), 2 / 16)
+})
+
+test_that("a K93 stand with no stems above the threshold still draws", {
+  skip_if_not_installed("plant")
+  stand <- realise_stand(k93_run(), side = 5, min_size = 1e4)
+  expect_equal(nrow(stand$trees), 0)
+  long <- stand_long(stand)
+  expect_equal(nrow(long), 0)
+  data <- page_data(stand)
+  expect_named(data$rows, c("size", "stem_diameter"))
+  expect_length(unlist(data$trees), 0)
 })
 
 test_that("K93 counts follow plant's integral above the threshold", {

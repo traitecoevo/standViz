@@ -1,9 +1,9 @@
 ## Short runs carried in birth date, one per model, shared by the tests.
-birth_date_run <- function(model, traits, lifetime, birth_rate = 20) {
+birth_date_run <- function(model, traits, lifetime, birth_rate = 20, ...) {
   p <- plant::default_parameters(model, quiet = TRUE)
   p$max_patch_lifetime <- lifetime
   p <- plant::add_strategies(p, traits, birth_rate = rep(birth_rate, nrow(traits)))
-  plant::run(p, control = plant::control(node_density_coordinate = "birth_date"),
+  plant::run(p, control = plant::control(node_density_coordinate = "birth_date", ...),
              record = "steps")
 }
 cached <- function(make) {

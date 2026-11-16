@@ -81,9 +81,10 @@ stand_json <- function(stand, colour_by = character(0)) {
       if (crowned) out$profile <- stand$crowns[[k]]$profile
       out
     }),
-    trees = list(species = match(tr$species, stand$species$id) - 1L,
-                 x = tr$x, y = tr$y, birth = tr$birth_frame - 1L, frames = n,
-                 offset = c(0L, cumsum(n)[-length(n)])),
+    ## I() keeps a stand of one tree as arrays under auto_unbox.
+    trees = lapply(list(species = match(tr$species, stand$species$id) - 1L,
+                        x = tr$x, y = tr$y, birth = tr$birth_frame - 1L,
+                        frames = n, offset = cumsum(n) - n), I),
     rows = lapply(drawn, function(v) pack_u16(r[[v]])),
     colour = lapply(seq_along(colour_by), function(i) {
       c(list(label = names(colour_by)[i], column = unname(colour_by[i])),
@@ -97,6 +98,7 @@ stand_json <- function(stand, colour_by = character(0)) {
 ## Values as 16-bit integers spanning their range (min + q * scale), base64.
 ## Net production, for one, is negative in deep shade.
 pack_u16 <- function(v) {
+  if (length(v) == 0) return(list(min = 0, scale = 0, data = ""))
   lo <- min(v)
   scale <- (max(v) - lo) / 65535
   q <- if (scale > 0) as.integer(round((v - lo) / scale)) else integer(length(v))
