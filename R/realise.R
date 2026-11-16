@@ -11,9 +11,10 @@
 #' seeded visual device: best-candidate sampling on a torus, spacing larger
 #' trees by crown size, so the patch tiles seamlessly.
 #'
-#' @param results Output of `plant::run_scm(p, ctrl, collect = TRUE)`, run with
-#'   density in birth date: `plant::control(node_density_coordinate =
-#'   "birth_date")`.
+#' @param results A tidied run, `plant::tidy(plant::run(p, control = ctrl,
+#'   record = "steps"))`, with density in birth date: `ctrl <-
+#'   plant::control(node_density_coordinate = "birth_date")`. The `plant_run`
+#'   itself is not accepted; tidy it first.
 #' @param side Side of the square patch drawn (m).
 #' @param frames_per_year Frame rate in model time.
 #' @param min_height Trees appear once taller than this (m). Seedlings far
@@ -30,6 +31,10 @@
 #' @export
 realise_stand <- function(results, side = 20, frames_per_year = 2,
                           min_height = 1.5, lad = 1, seed = 1) {
+  if (inherits(results, "plant_run")) {
+    stop("Give realise_stand() the tidied run: plant::tidy(res), from a run ",
+         "with record = \"steps\"", call. = FALSE)
+  }
   model <- stand_model(results$p)
   if (model != "FF16") {
     stop("Only FF16 runs can be realised so far, not ", model, call. = FALSE)

@@ -14,8 +14,8 @@ realise_stand(
 )
 }
 \arguments{
-\item{results}{Output of \code{plant::run_scm(p, ctrl, collect = TRUE)}, run with
-density in birth date: \code{plant::control(node_density_coordinate = "birth_date")}.}
+\item{results}{A tidied run, \code{plant::tidy(plant::run(p, control = ctrl, record = "steps"))}, with density in birth date: \code{ctrl <- plant::control(node_density_coordinate = "birth_date")}. The \code{plant_run}
+itself is not accepted; tidy it first.}
 
 \item{side}{Side of the square patch drawn (m).}
 

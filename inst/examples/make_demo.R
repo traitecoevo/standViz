@@ -7,12 +7,14 @@ library(standviz)
 out <- commandArgs(trailingOnly = TRUE)[1]
 if (is.na(out)) out <- "ff16-two-species.html"
 
-p <- scm_base_parameters("FF16")
+## default_parameters() attaches plant's testing trade-offs, which derive the
+## leaf turnover and other parameters from lma.
+p <- default_parameters("FF16", quiet = TRUE)
 p$max_patch_lifetime <- 100
 p <- add_strategies(p, trait_matrix(c(0.0825, 0.2), "lma"),
                     birth_rate = c(20, 20))
-results <- run_scm(p, ctrl = control(node_density_coordinate = "birth_date"),
-                   collect = TRUE)
+results <- tidy(run(p, control = control(node_density_coordinate = "birth_date"),
+                    record = "steps"))
 
 stand <- realise_stand(results, side = 20)
 print(stand)

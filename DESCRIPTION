@@ -21,7 +21,7 @@ Suggests:
     testthat (>= 3.0.0),
     withr
 Remotes:
-    traitecoevo/plant@develop
+    traitecoevo/plant@e41aa17834039aa0169e9e74f23dcf4ca5e08fc9
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 8.0.0

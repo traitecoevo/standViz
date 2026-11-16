@@ -8,3 +8,4 @@
 ^LICENSE$
 ^ignore$
 ^\.\.Rcheck$
+^\.plant-interface-version$
