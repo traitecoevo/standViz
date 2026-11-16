@@ -31,7 +31,7 @@ every tree-frame it carries.}
 state is left untouched.}
 }
 \value{
-A \code{standviz_stand}: frame times, the light profile through time, one
+A \code{plantpress_stand}: frame times, the light profile through time, one
 row per tree, and one row per tree per frame it is visible carrying every
 state variable from the run and from \code{\link[plant:expand_state]{plant::expand_state()}} (leaf, sapwood,
 bark and root areas and masses, fecundity, net production, ...). Expand it

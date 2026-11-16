@@ -1,4 +1,4 @@
 library(testthat)
-library(standviz)
+library(plantpress)
 
-test_check("standviz")
+test_check("plantpress")

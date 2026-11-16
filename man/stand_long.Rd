@@ -7,7 +7,7 @@
 stand_long(stand)
 }
 \arguments{
-\item{stand}{A \code{standviz_stand} from \code{\link[=realise_stand]{realise_stand()}}.}
+\item{stand}{A \code{plantpress_stand} from \code{\link[=realise_stand]{realise_stand()}}.}
 }
 \value{
 A data frame with \code{frame}, \code{time}, \code{tree}, \code{species}, \code{x}, \code{y},

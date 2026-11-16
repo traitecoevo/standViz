@@ -4,7 +4,7 @@
 #' want every tree's size at every frame (a Blender script, a check against
 #' plant's size distribution).
 #'
-#' @param stand A `standviz_stand` from [realise_stand()].
+#' @param stand A `plantpress_stand` from [realise_stand()].
 #' @return A data frame with `frame`, `time`, `tree`, `species`, `x`, `y`,
 #'   `height`, `crown_scale`, `crown_radius` (widest point), `stem_diameter`
 #'   (m), `light_crown` (the canopy openness at the crown's leaf-weighted
@@ -41,7 +41,7 @@ light_at <- function(light, frame, z) {
 #' CDN, so it needs a network connection), and can be emailed, embedded in a
 #' Quarto page or published.
 #'
-#' @param stand A `standviz_stand` from [realise_stand()].
+#' @param stand A `plantpress_stand` from [realise_stand()].
 #' @param file Path of the HTML file to write.
 #' @param title Page title.
 #' @param standalone Wrap the page in its own `<html>` document, so it opens
@@ -63,7 +63,7 @@ write_viewer <- function(stand, file, title = "Stand through time",
   }
   if (is.null(names(colour_by))) names(colour_by) <- colour_by
   names(colour_by)[names(colour_by) == ""] <- colour_by[names(colour_by) == ""]
-  template <- system.file("viewer", "viewer.html", package = "standviz",
+  template <- system.file("viewer", "viewer.html", package = "plantpress",
                           mustWork = TRUE)
   html <- paste(readLines(template, warn = FALSE), collapse = "\n")
   ## A "</" inside the data would close its <script> element.

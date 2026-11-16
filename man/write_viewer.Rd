@@ -13,7 +13,7 @@ write_viewer(
 )
 }
 \arguments{
-\item{stand}{A \code{standviz_stand} from \code{\link[=realise_stand]{realise_stand()}}.}
+\item{stand}{A \code{plantpress_stand} from \code{\link[=realise_stand]{realise_stand()}}.}
 
 \item{file}{Path of the HTML file to write.}
 
