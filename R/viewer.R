@@ -97,6 +97,7 @@ stand_json <- function(stand, colour_by = character(0)) {
 ## Values as 16-bit integers spanning their range (min + q * scale), base64.
 ## Net production, for one, is negative in deep shade.
 pack_u16 <- function(v) {
+  if (length(v) == 0) return(list(min = 0, scale = 0, data = ""))
   lo <- min(v)
   scale <- (max(v) - lo) / 65535
   q <- if (scale > 0) as.integer(round((v - lo) / scale)) else integer(length(v))

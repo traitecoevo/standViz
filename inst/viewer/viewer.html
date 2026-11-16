@@ -225,6 +225,7 @@ document.getElementById("top-head").textContent = crowned ? `top ${sizeUnits}` :
 document.getElementById("light-title").textContent = crowned
   ? "Canopy openness by height" : `Light by ${sizeName}`;
 document.getElementById("col-height-label").textContent = RAMPS.height.title;
+if (!crowned) RAMPS.light.title = `Light at the stem's ${sizeName}`;
 
 // ---- scene ------------------------------------------------------------
 const stage = document.getElementById("stage");
