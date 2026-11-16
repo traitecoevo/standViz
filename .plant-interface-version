@@ -3,14 +3,18 @@
 # logpile.
 migrated_on: 2026-11-16
 plant_version: 2.0.0.9002
-plant_ref: develop@0c0e2538 (2026-11-16, plant#798; odelia 0.11.1 @v0.11.1, phylloptim 0.37.0 @64cbde2)
+plant_ref: develop@bbae0a79 (2026-11-16, plant#809; odelia 0.11.2 @v0.11.2, phylloptim 0.38.0 @e0f2109)
 applied_breaking_changes:
+  - figures-to-plantpress  # plant#809: plot_size_distribution(), TF24_plot_diagnostics() and FF16_generate_stand_report() leave plant; plantpress has plot_size_distribution() and plot_water() (#15)
   - plotting-exports  # plant#800: the crown shape is read with plant::canopy_profile() under the run's tidy()$control, the size's meaning and units with plant::model_size(), and K93's stem sizes and competition field from expand_state() and the tidied environment; plantpress's own copies of the Yokozawa profile and eta_c are gone. expand_state() now pairs species with strategies by number, so tree_geometry() no longer makes species a factor
   - k-s-from-whole-stem-removed  # plant#802: TF24_K_s_from_whole_stem() removed; not used here
   - offspring-height-tol  # plant#798: Control$offspring_production_tol -> offspring_height_tol and a newborn's height by TOMS748 to 1e-12; not set here, and the runs this package draws move only at that tolerance
   - one-run-verb  # plant#779 (#428): run_scm(p, ctrl = ctrl, collect = TRUE) -> tidy(run(p, control = ctrl, record = "steps")); realise_stand() takes the plant_run (and tidies it) or the tidied list, and refuses anything else by name. scm_base_parameters() became default_parameters(), not base_parameters(): see the next entry
   - tradeoffs-travel-with-parameters  # plant#731: the bare base parameters attach no trade-offs, so the demo, README and tests build on default_parameters("FF16", quiet = TRUE) to keep lma deriving k_l and the other FF16 parameters, as before
-# Checked and not affected (no call sites): the stochastic solver's death checks on
+# Checked and not affected (no call sites): stochastic arrivals in C++ and
+# stochastic events (#806, #801); TF24f's collar bracket (#805); odelia's
+# TOMS748 and the odelia 0.11.2 / phylloptim 0.38.0 pins it brought (#807);
+# the stochastic solver's death checks on
 # its schedule (#795); SCM -> DeterministicPatchRunner and
 # the scm -> x arguments (#793); stochastic deaths on an interval (#790);
 # establishment averaged over the cell on the birth-date coordinate (#788) moves
