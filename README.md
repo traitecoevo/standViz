@@ -38,7 +38,15 @@ Each figure takes a run (a `plant_run` or its tidied list) and returns a ggplot,
 
 `stand_figures(results)` returns every figure that applies to a run. A figure draws only what the run carries, and labels sizes in the model's own units, so K93 has no leaf area or biomass panels and its sizes are stem diameters in cm.
 
-See [PLAN.md](PLAN.md) for what comes next: stand reports, cinematic renders in Blender, metapopulation landscapes.
+## Report
+
+```r
+stand_report(results, "stand-report.html", viewer = TRUE)
+```
+
+writes one self-contained page: the run's inputs (the parameters that set its species apart, their birth rates, any numerical settings changed from plant's defaults, and the environment), then every figure `stand_figures()` draws, each with a short account of what it shows, and, with `viewer = TRUE`, the 3D stand. It needs the [Quarto](https://quarto.org) CLI and the `quarto` package; `stand_figures()` gives the same figures without them.
+
+See [PLAN.md](PLAN.md) for what comes next: cinematic renders in Blender, metapopulation landscapes.
 
 ## Install
 
