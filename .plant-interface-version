@@ -12,7 +12,8 @@ applied_breaking_changes:
   - one-run-verb  # plant#779 (#428): run_scm(p, ctrl = ctrl, collect = TRUE) -> tidy(run(p, control = ctrl, record = "steps")); realise_stand() takes the plant_run (and tidies it) or the tidied list, and refuses anything else by name. scm_base_parameters() became default_parameters(), not base_parameters(): see the next entry
   - tradeoffs-travel-with-parameters  # plant#731: the bare base parameters attach no trade-offs, so the demo, README and tests build on default_parameters("FF16", quiet = TRUE) to keep lma deriving k_l and the other FF16 parameters, as before
 # Checked and not affected (no call sites): stochastic arrivals in C++ and
-# stochastic events (#806, #801); TF24f's collar bracket (#805); the stochastic solver's death checks on
+# stochastic events (#806, #801); TF24f's collar bracket (#805); odelia's
+# TOMS748 and the odelia 0.11.2 / phylloptim 0.38.0 pins it brought (#807);the stochastic solver's death checks on
 # its schedule (#795); SCM -> DeterministicPatchRunner and
 # the scm -> x arguments (#793); stochastic deaths on an interval (#790);
 # establishment averaged over the cell on the birth-date coordinate (#788) moves
