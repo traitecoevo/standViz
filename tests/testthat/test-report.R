@@ -1,6 +1,16 @@
 ## The report: its contents are computed in R and tested here without Quarto;
 ## one test renders a page where the Quarto CLI is installed.
 
+## A figure, or every panel of a patchwork, builds.
+expect_all_panels_build <- function(plot) {
+  panels <- if (inherits(plot, "patchwork")) {
+    lapply(seq_along(plot), function(i) plot[[i]])
+  } else {
+    list(plot)
+  }
+  for (p in panels) expect_no_error(ggplot2::ggplot_build(p))
+}
+
 test_that("an FF16 report holds every figure and the inputs that differ", {
   skip_if_not_installed("plant")
   res <- ff16_run()
@@ -9,8 +19,7 @@ test_that("an FF16 report holds every figure and the inputs that differ", {
   for (f in contents$figures) {
     expect_true(nzchar(f$title))
     expect_true(f$height > 0)
-    expect_no_error(ggplot2::ggplot_build(
-      if (inherits(f$plot, "patchwork")) f$plot[[1]] else f$plot))
+    expect_all_panels_build(f$plot)
   }
   inputs <- contents$inputs
   expect_identical(inputs$species$Label, c("lma = 0.0825", "lma = 0.2"))
@@ -33,6 +42,7 @@ test_that("a TF24 report adds the water figure and the soil", {
   ## A patchwork is sized by its panels, two to a row.
   water <- contents$figures$water
   expect_equal(water$height, 2.6 * ceiling(length(water$plot) / 2))
+  for (f in contents$figures) expect_all_panels_build(f$plot)
   env <- contents$inputs$environment
   expect_identical(env$Variable, c("Light", "Soil layers", "Mean rainfall"))
   ## One species, but its lma differs from the default strategy's.
@@ -47,6 +57,29 @@ test_that("a K93 report shows a parameter one species leaves at its default", {
   expect_identical(pars$Parameter, "b_0")
   expect_equal(pars$Default, pars[["Species 1"]])
   expect_match(contents$inputs$environment$Value, "stem diameter")
+})
+
+test_that("a value shared by every species is listed against the model's", {
+  skip_if_not_installed("plant")
+  p <- plant::default_parameters("FF16", quiet = TRUE)
+  a_dG1 <- p$strategy_default$pars$a_dG1
+  p$strategy_default$pars$a_dG1 <- 2 * a_dG1
+  p <- plant::add_strategies(p, plant::trait_matrix(c(0.1, 0.2), "lma"),
+                             birth_rate = c(1, 1))
+  pars <- differing_parameters(p)
+  expect_identical(pars$Parameter, c("lma", "a_dG1"))
+  row <- pars[pars$Parameter == "a_dG1", ]
+  expect_identical(row$Default, number_text(a_dG1))
+  expect_identical(row[["Species 1"]], number_text(2 * a_dG1))
+})
+
+test_that("a numerical setting changed in its eighth digit is listed", {
+  skip_if_not_installed("plant")
+  ctrl <- plant::control()
+  ctrl$ode_tol_rel <- ctrl$ode_tol_rel * (1 + 1e-9)
+  d <- differing_control(ctrl)
+  expect_identical(d$Setting, "ode_tol_rel")
+  expect_false(d$Value == d$Default)
 })
 
 test_that("the viewer is embedded on request", {
@@ -99,7 +132,8 @@ test_that("a report renders to one self-contained page", {
   ## grepl(), not expect_match(), which would print the whole page.
   has <- function(text) grepl(text, html, fixed = TRUE)
   expect_true(has("<title>Two FF16 species</title>"))
-  for (heading in c("Inputs", "Size distribution through time",
+  for (heading in c("Inputs", "Parameters", "Numerical settings",
+                    "Environment", "Size distribution through time",
                     "Growth, mortality and fecundity by size", "Stand totals",
                     "Light through the canopy", "The stand in 3D")) {
     expect_true(has(paste0(">", heading, "<")), label = heading)

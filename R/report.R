@@ -1,16 +1,20 @@
 #' A report on a run
 #'
-#' Renders one self-contained HTML page: the run's inputs (the parameters
-#' that set its species apart, their birth rates, the numerical settings that
-#' differ from plant's, and the environment), then every figure
-#' [stand_figures()] draws for it, each with a short account of what it
-#' shows, and optionally the 3D viewer. It works for any model, because the
-#' figures attach by what the run carries.
+#' Renders one HTML page: the run's inputs (the parameters that differ
+#' between its species or from the model's defaults, their birth rates, the
+#' numerical settings that differ from plant's, and the environment), then
+#' every figure [stand_figures()] draws for it, each with a short account of
+#' what it shows, and optionally the 3D viewer. It works for any model,
+#' because the figures attach by what the run carries. The page holds its
+#' figures and needs nothing else, except the embedded viewer, which loads
+#' three.js from a CDN.
 #'
 #' The report is a Quarto document (`inst/report/stand-report.qmd`). Its
 #' contents are computed here, in this R session, and the document only lays
-#' them out, so it needs the Quarto CLI and the `quarto`, `knitr` and
-#' `rmarkdown` packages, but not plant.
+#' them out. It needs the Quarto CLI and the `quarto`, `knitr` and
+#' `rmarkdown` packages. Quarto runs the document in a new R process, which
+#' is given this session's libraries: reading the saved figures loads plant
+#' and plantpress, whose objects the figures keep.
 #'
 #' @inheritParams plot_by_size
 #' @param file Path of the HTML file to write.
@@ -164,7 +168,10 @@ birth_rate_text <- function(s) {
 
 ## The parameters a user sets (plant's parameter table's traits, parameters
 ## and strategy fields, not the derived ones) whose value differs between
-## species or from the default strategy, with plant's description and unit.
+## species or from the model's default strategy, with plant's description and
+## unit. The default is the model's, not the run's own strategy_default: a
+## value set there before adding strategies is shared by every species, and
+## is still an input of the run.
 differing_parameters <- function(p) {
   table <- plant::parameter_table(p)
   table <- table[table$group %in% c("trait", "parameter", "strategy"), ]
@@ -172,7 +179,9 @@ differing_parameters <- function(p) {
     v <- if (name %in% names(s$pars)) s$pars[[name]] else s[[name]]
     if (is.numeric(v) && length(v) == 1) v else NA_real_
   }
-  default <- vapply(table$name, value, 0, s = p$strategy_default)
+  model <- plant::model_size(p)$model
+  default <- vapply(table$name, value, 0, s = plant::default_parameters(
+    model, quiet = TRUE)$strategy_default)
   vals <- vapply(p$strategies, function(s) vapply(table$name, value, 0, s = s),
                  numeric(nrow(table)))
   vals <- matrix(vals, nrow = nrow(table))
@@ -218,11 +227,15 @@ plain_text <- function(x) {
 differing_control <- function(ctrl) {
   if (is.null(ctrl)) return(NULL)
   default <- plant::control()
-  text <- function(v) paste(format(v), collapse = ", ")
+  text <- function(v) paste(format(v, digits = 15), collapse = ", ")
   names <- names(unclass(ctrl))
   run <- vapply(names, function(n) text(ctrl[[n]]), "")
   def <- vapply(names, function(n) text(default[[n]]), "")
-  keep <- run != def
+  ## By value: printed to 7 digits, a finer change would not show.
+  keep <- !vapply(names, function(n) {
+    isTRUE(all.equal(ctrl[[n]], default[[n]], tolerance = 0,
+                     check.attributes = FALSE))
+  }, TRUE)
   if (!any(keep)) return(NULL)
   data.frame(Setting = names[keep], Value = run[keep], Default = def[keep],
              row.names = NULL)

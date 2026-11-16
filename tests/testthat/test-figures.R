@@ -214,7 +214,7 @@ test_that("rates and light are drawn against the model's own size", {
   run <- k93_run()
   p <- built(plot_by_size(run))
   expect_identical(p$labels$x, "Stem diameter (cm)")
-  expect_match(levels(p$data$rate)[1], "cm~yr^{-1}", fixed = TRUE)
+  expect_match(levels(p$data$rate)[1], "\"cm\"~yr^{-1}", fixed = TRUE)
   ## Each strip label is plotmath that parses.
   for (level in levels(p$data$rate)) expect_no_error(str2lang(level))
   expect_identical(built(plot_light_profile(run))$labels$y,

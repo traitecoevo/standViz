@@ -34,18 +34,22 @@ date, and adds several MB to the page for a long run.}
 \code{file}, invisibly.
 }
 \description{
-Renders one self-contained HTML page: the run's inputs (the parameters
-that set its species apart, their birth rates, the numerical settings that
-differ from plant's, and the environment), then every figure
-\code{\link[=stand_figures]{stand_figures()}} draws for it, each with a short account of what it
-shows, and optionally the 3D viewer. It works for any model, because the
-figures attach by what the run carries.
+Renders one HTML page: the run's inputs (the parameters that differ
+between its species or from the model's defaults, their birth rates, the
+numerical settings that differ from plant's, and the environment), then
+every figure \code{\link[=stand_figures]{stand_figures()}} draws for it, each with a short account of
+what it shows, and optionally the 3D viewer. It works for any model,
+because the figures attach by what the run carries. The page holds its
+figures and needs nothing else, except the embedded viewer, which loads
+three.js from a CDN.
 }
 \details{
 The report is a Quarto document (\code{inst/report/stand-report.qmd}). Its
 contents are computed here, in this R session, and the document only lays
-them out, so it needs the Quarto CLI and the \code{quarto}, \code{knitr} and
-\code{rmarkdown} packages, but not plant.
+them out. It needs the Quarto CLI and the \code{quarto}, \code{knitr} and
+\code{rmarkdown} packages. Quarto runs the document in a new R process, which
+is given this session's libraries: reading the saved figures loads plant
+and plantpress, whose objects the figures keep.
 }
 \examples{
 \dontrun{

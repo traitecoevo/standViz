@@ -212,7 +212,8 @@ plot_by_size <- function(x, ages = NULL) {
                 fecundity = backward(d$fecundity) / dt)
   ## Plotmath, parsed by the strip labeller: a superscript minus character
   ## is missing from some devices' fonts, as in other panels' axis labels.
-  names(rates) <- c(sprintf("Growth~(%s~yr^{-1})", size$size_units),
+  ## The unit is quoted, so any unit parses.
+  names(rates) <- c(sprintf("Growth~(\"%s\"~yr^{-1})", size$size_units),
                     "Mortality~(yr^{-1})",
                     "Fecundity~(offspring~yr^{-1})")
   keep <- d$time %in% closest_times(d$time, ages)

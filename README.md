@@ -44,7 +44,7 @@ Each figure takes a run (a `plant_run` or its tidied list) and returns a ggplot,
 stand_report(results, "stand-report.html", viewer = TRUE)
 ```
 
-writes one self-contained page: the run's inputs (the parameters that set its species apart, their birth rates, any numerical settings changed from plant's defaults, and the environment), then every figure `stand_figures()` draws, each with a short account of what it shows, and, with `viewer = TRUE`, the 3D stand. It needs the [Quarto](https://quarto.org) CLI and the `quarto` package; `stand_figures()` gives the same figures without them.
+writes one page: the run's inputs (the parameters that differ between its species or from the model's defaults, their birth rates, any numerical settings changed from plant's defaults, and the environment), then every figure `stand_figures()` draws, each with a short account of what it shows, and, with `viewer = TRUE`, the 3D stand. The page carries its own figures; only the embedded viewer fetches anything (three.js, from a CDN). It needs the [Quarto](https://quarto.org) CLI and the `quarto` package; `stand_figures()` gives the same figures without them.
 
 See [PLAN.md](PLAN.md) for what comes next: cinematic renders in Blender, metapopulation landscapes.
 
