@@ -14,8 +14,9 @@ NULL
 #' @param data_species A tidied run's `species` table, or the run itself (a
 #'   `plant_run` or a tidied deterministic run).
 #' @param model The model, to label the size axis when `data_species` is a bare
-#'   table, which does not record it. A run labels its own. With neither the
-#'   axis reads "Height (m)", as in every model sized by height.
+#'   table, which does not record it. A run labels its own, and `model` is
+#'   then ignored. With neither the axis reads "Height (m)", as in every model
+#'   sized by height.
 #' @return A ggplot.
 #' @export
 #' @examples
@@ -71,6 +72,7 @@ water_panels <- function(res) {
          "this ", plant::model_size(res)$model, " run does not", call. = FALSE)
   }
   size <- size_label(res)
+  leaf_area <- patch_leaf_area(res)
   panels <- list(
     rainfall = flux_panel(env, "sum_rainfall",
                           expression(Rainfall ~ (m ~ yr^{-1}))),
@@ -80,10 +82,10 @@ water_panels <- function(res) {
                            expression(psi[soil] ~ (-MPa))),
     transpiration = flux_panel(env, "sum_resource_depletion",
                                expression(Transpiration ~ (m ~ yr^{-1}))),
-    transpiration_per_leaf_area = flux_panel(
+    transpiration_per_leaf_area = if (!is.null(leaf_area)) flux_panel(
       env, "sum_resource_depletion",
       expression(Transpiration ~ per ~ leaf ~ area ~ (m ~ yr^{-1})),
-      per = patch_leaf_area(res)),
+      per = leaf_area),
     opt_psi_leaf = node_panel(res$species, "opt_psi_leaf", size,
                               expression(psi[leaf] ~ (-MPa))),
     opt_root_psi = node_panel(res$species, "opt_root_psi", size,

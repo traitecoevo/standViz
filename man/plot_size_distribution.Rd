@@ -11,8 +11,9 @@ plot_size_distribution(data_species, model = NULL)
 \code{plant_run} or a tidied deterministic run).}
 
 \item{model}{The model, to label the size axis when \code{data_species} is a bare
-table, which does not record it. A run labels its own. With neither the
-axis reads "Height (m)", as in every model sized by height.}
+table, which does not record it. A run labels its own, and \code{model} is
+then ignored. With neither the axis reads "Height (m)", as in every model
+sized by height.}
 }
 \value{
 A ggplot.

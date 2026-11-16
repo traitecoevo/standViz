@@ -113,5 +113,10 @@ test_that("water panels attach by the columns a run carries", {
   res <- seasonal_tf24()
   res$species$Tleaf <- NULL
   expect_false("Tleaf" %in% names(water_panels(res)))
+  ## Without leaf area there is nothing to divide transpiration by.
+  local_mocked_bindings(patch_leaf_area = function(res) NULL)
+  panels <- water_panels(res)
+  expect_true("transpiration" %in% names(panels))
+  expect_false("transpiration_per_leaf_area" %in% names(panels))
   expect_error(plot_water(ff16_run()), "needs a run that records soil water")
 })
