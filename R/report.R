@@ -134,16 +134,20 @@ report_inputs <- function(res) {
   species <- data.frame(
     Species = seq_along(res$p$strategies),
     Label = species_labels(res$p),
-    `Birth rate (m⁻² yr⁻¹)` = vapply(res$p$strategies, birth_rate_text, ""),
-    ## As text: a table would round a rate of 1e-15 to 0.
-    `Offspring production` = vapply(res$offspring_production, function(v) {
-      format(signif(v, 4))
-    }, ""),
+    birth_rate = vapply(res$p$strategies, birth_rate_text, ""),
+    `Offspring production` = number_text(res$offspring_production),
     check.names = FALSE)
+  names(species)[3] <- "Birth rate (m\u207b\u00b2 yr\u207b\u00b9)"
   list(run = run, species = species,
        parameters = differing_parameters(res$p),
        control = differing_control(res$control),
        environment = environment_table(res))
+}
+
+## Numbers as text to four significant digits: a table would round a value
+## of 1e-15 to 0. NA is blank.
+number_text <- function(v) {
+  vapply(v, function(x) if (is.na(x)) "" else format(signif(x, 4)), "")
 }
 
 ## A strategy's birth rate: its constant value, or the range of a rate that
@@ -184,9 +188,9 @@ differing_parameters <- function(p) {
   out <- data.frame(Parameter = table$name[keep],
                     Description = blank(plain_text(table$description[keep])),
                     Unit = blank(plain_text(table$unit[keep])),
-                    Default = signif(default[keep], 4))
+                    Default = number_text(unname(default[keep])))
   for (k in seq_len(ncol(vals))) {
-    out[[paste("Species", k)]] <- signif(vals[keep, k], 4)
+    out[[paste("Species", k)]] <- number_text(vals[keep, k])
   }
   rownames(out) <- NULL
   out
@@ -197,8 +201,8 @@ differing_parameters <- function(p) {
 ## and the remaining markup is dropped.
 plain_text <- function(x) {
   superscript <- function(s) {
-    chartr("-0123456789", paste0("⁻⁰¹²³⁴",
-                                 "⁵⁶⁷⁸⁹"),
+    chartr("-0123456789", paste0("\u207b\u2070\u00b9\u00b2\u00b3\u2074",
+                                 "\u2075\u2076\u2077\u2078\u2079"),
            gsub("[^-0-9]", "", s))
   }
   ## "$^{-2}$" and "$^2$", and plant's one "^${2}$".
@@ -244,7 +248,7 @@ environment_table <- function(res) {
     span <- diff(range(flux$time))
     total <- flux$sum_rainfall[which.max(flux$time)] -
       flux$sum_rainfall[which.min(flux$time)]
-    rows[["Mean rainfall"]] <- sprintf("%s m yr⁻¹",
+    rows[["Mean rainfall"]] <- sprintf("%s m yr\u207b\u00b9",
                                        format(signif(total / span, 3)))
   }
   if (length(rows) == 0) return(NULL)

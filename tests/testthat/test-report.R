@@ -17,8 +17,9 @@ test_that("an FF16 report holds every figure and the inputs that differ", {
   ## lma is the only parameter set here; the trade-offs' derived ones are left
   ## out, though they differ too.
   expect_identical(inputs$parameters$Parameter, "lma")
-  expect_equal(inputs$parameters[["Species 2"]], 0.2)
-  expect_identical(inputs$parameters$Unit, "kg m⁻²")
+  ## Values are text, so a small one is not printed as 0.
+  expect_identical(inputs$parameters[["Species 2"]], "0.2")
+  expect_identical(inputs$parameters$Unit, "kg m\u207b\u00b2")
   expect_identical(inputs$control$Setting, "node_density_coordinate")
   expect_identical(inputs$environment$Variable, "Light")
   expect_null(contents$viewer)
@@ -59,8 +60,13 @@ test_that("plant's LaTeX units read as plain text", {
   expect_identical(
     plain_text(c("kg m$^{-2}$", "yr m^${2}$ kg$^{-1}$", NA,
                  "leaf area of 1m$^2$", "kg")),
-    c("kg m⁻²", "yr m² kg⁻¹", NA,
-      "leaf area of 1m²", "kg"))
+    c("kg m\u207b\u00b2", "yr m\u00b2 kg\u207b\u00b9", NA,
+      "leaf area of 1m\u00b2", "kg"))
+})
+
+test_that("numbers in the tables keep small values", {
+  expect_identical(number_text(c(3.62847e-15, 0.0825, NA)),
+                   c("3.628e-15", "0.0825", ""))
 })
 
 test_that("a birth rate that varies is given as its range", {
