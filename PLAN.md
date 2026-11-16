@@ -1,33 +1,82 @@
-# standviz plan
+# plantpress plan (the package is `standviz` until the rename)
 
-3D visualisation of `plant` output, from one individual to a whole stand to a metapopulation of patches. This file holds the decisions that constrain the work; keep it current.
+Figures of `plant` output: 3D views of stands from one individual to a metapopulation of patches, 2D figures of runs, and stand reports. This file holds the decisions that constrain the work; keep it current.
 
 ## Decided (2026-11-04)
 
-- **The repo is reused and the old code retired.** The 2016 `trees3D` package (`rgl` crowns) is deleted; git history keeps it. The package is now called `standviz`.
+- **The repo is reused and the old code retired.** The 2016 `trees3D` package (`rgl` crowns) is deleted; git history keeps it.
 - **One realisation layer, renderers plug in.** R turns a `plant` run into explicit, persistent individuals (`realise_stand()`). Renderers read only its output, so a new renderer never needs to know about `plant`.
 - **First renderer: three.js in the browser**, written as a single self-contained HTML page (`write_viewer()`). First scale: one stand through time.
 - **Later, in order:** Blender scripted headless for cinematic films; then a metapopulation landscape view (patches with ages drawn from the patch-age distribution, which reuses one realised stand). An `rgl`/rayrender quick look is not pursued.
 - Game engines and Manim are not pursued: game engines are too heavy to keep reproducible next to a model, and Manim is 2D.
 
+## Decided (Daniel, 2026-11-16; standViz#9)
+
+- **Rename the package and the repo to `plantpress`.** This replaces the old item 0 ("new name, undecided").
+- **Overhaul the structure.** It is free to break from the current layout; nothing outside the package depends on it yet.
+- **plant's plotting moves here**, so plant keeps the model and plantpress owns the figures: `plot_size_distribution()`, `TF24_plot_diagnostics()`, and `FF16_generate_stand_report()` with `inst/reports/FF16_report.Rmd`.
+- **Use plant's functions wherever possible.** Where plantpress needs a quantity plant computes but does not expose, plant exposes it; plantpress does not re-derive it.
+- **The FF16 report is modernised in the move**, not moved as it is.
+- **FF16, TF24 and K93, from one common core.** Sampling, realisation, crown geometry, size distributions and the viewer work for any model. Model-specific pieces are drawn in only where a model needs them, such as TF24's water potentials, leaf temperature and soil water, or K93's own size variables. Model-generic behaviour comes from plant (`expand_state()`, `sample_size_distribution()`, the tidy outputs, the model registry), never from a branch on the model name inside plantpress. Each model gets a test that a small run realises and plots.
+
+## Proposed (2026-11-16), awaiting Daniel
+
+Nothing below is decided. Each item is recorded on standViz#9 as Daniel settles it, and then moves up to "Decided".
+
+1. **Scope: all three outputs, as layers.** The core turns a run into tables (realised trees, size distributions, stand totals). Renderers read those tables: the 3D viewer, 2D figures, and the report, which is only an arrangement of the 2D figures. The 2D figures read plant's tidy outputs directly and need no realisation.
+2. **Layout.** `R/run.R` (accept a `plant_run` or its tidied list; read the model's size metadata from plant), `R/realise.R`, `R/crown.R` (a thin reader of plant's crown export), `R/viewer.R` (`write_viewer()`, `stand_json()`), `R/figures.R` (one function per figure, each returning a ggplot), `R/report.R`, `inst/viewer/viewer.html`, `inst/report/stand-report.qmd`.
+3. **Model-specific pieces attach by the data, not the model's name.** A figure or colour states the columns it needs and is drawn when the run carries them: the water panels appear for any run with `soil_moist` in its environment (TF24, TF24f, TF24t, TF24w), the leaf-temperature panel for any run with `Tleaf`. Labels and units of the size variable come from plant's model metadata (item 9).
+4. **ggplot2, with patchwork for assembled panels**, both in `Imports`. plant's three functions and overstorey's four pages already use them, and a returned ggplot lets callers add `+ theme(...)`, as overstorey does.
+5. **API.** Kept: `realise_stand()`, `stand_long()`, `write_viewer()`. `realise_stand()` also accepts a `plant_run` (it tidies it), accepts any model, and returns a `plantpress_stand`. Dropped from the exports: `crown_scale()` (internal) and `crown_profile()` (replaced by plant's). New: `plot_size_distribution()` (plant's name and argument, so overstorey's migration is a namespace swap), `plot_stand_totals()`, `plot_by_size()` (growth, mortality, fecundity against size at chosen ages), `plot_light_profile()`, `plot_water()` (replaces `TF24_plot_diagnostics()`, reading rainfall from the run's own flux records rather than taking `x` and `y`), `stand_figures()` (a named list of every figure that applies) and `stand_report()`.
+6. **K93 in 3D.** K93's size is stem diameter in cm; it has no height, leaf area or crown, and its Yokozawa profile smooths basal area over diameter. Proposed: K93 realises fully, and the viewer draws it as a stem map in plan view (each stem a disc of its basal area), inventing no height. The alternative is to leave K93 out of the viewer and plot it in 2D only.
+7. **How the plots leave plant: removed outright, no shims**, as #428 removed `run_scm()`. A shim could only stop with a pointer, since plant cannot depend on plantpress. The order prevents any broken window: plantpress gains the functions, overstorey moves its four pages to plantpress, and only then does plant remove them, with a NEWS entry each.
+8. **The report: a Quarto template rendered by `stand_report(x, file)`**, built only from `stand_figures(x)`, so it works for every model and is tested without Quarto by testing `stand_figures()`. Contents: the inputs (strategies' traits that differ, birth rates, the environment), size distributions through time, growth, mortality and fecundity by size at chosen ages, stand totals (leaf area, basal area, biomass by tissue), the light profile, the water panels where the run has soil water, and optionally the 3D viewer embedded. Dropped from the old report: `kableExtra` styling (plain `knitr::kable()`), `ggridges` ridgelines (facets instead), and the FF16-only leaf photosynthesis chunk.
+9. **What plant must expose.** Each is one plant PR, merged before the plantpress PR that uses it; none moves a number.
+   - **Crown shape.** A model-generic `canopy_profile(x, u)` for a strategy or individual, returning `Q` (the fraction of leaf area above relative height `u`), `q` (its density) and `eta_c`, read through `CanopyShape` with the strategy's `eta` and resolved shading model. This replaces standviz's `crown_profile()` and `crown_centre()` and plant's own R copy of `eta_c` (`R/tf24.R`), and draws `flat-top-soft-box` crowns correctly. `flat-top-box` never runs, so it never needs drawing.
+   - **The size variable.** Per model, the name, meaning and units of the size state (height in m; K93's stem diameter in cm) and of the competitive size (leaf area; K93's basal area), as fields in `inst/model-registry.yml` read through `model_registry()`. Today these exist only as prose in the registry's slots.
+   - **K93's sizes.** `K93_expand_state()` returns its input unchanged. It should add `diameter_stem` (m) and `area_stem` (m²), the column names FF16 and TF24 use, so the core reads one stem size for all three models.
+   - **K93's environment.** `K93_Environment::get_environment_state()` records the time where it should record the competition field (`k93_environment.h:44`), so a tidied K93 run has no profile. Record it as FF16's light field is recorded.
+   - **TF24's soil water potential.** `TF24_plot_diagnostics()` recomputes it with the default retention constants written in (`1.78e-3 * (soil_moist / 0.428)^-6.57`), which is wrong whenever `a_psi` or `n_psi` is set per layer. Record the environment's own potential in the tidy output beside `soil_moist`.
+10. **Rename mechanics.** After Daniel agrees: rename `traitecoevo/standViz` to `traitecoevo/plantpress` on GitHub (the old URL redirects); then one PR renames the package (`DESCRIPTION`, `tests/testthat.R`, `system.file(package =)`, the `standviz_stand` class, README, AGENTS.md, this file); the local folder `~/GitHub/plant-family/standviz` moves to `plantpress`, with `git worktree repair` and the remote URL updated; one plant-meta PR rewrites the stale `standviz` entry in `dependencies.yml` (which still says `trees3D`, `rgl`, dormant) and the mentions in `AGENTS.md`, `governance/issue-guide.md`, `project-board.md`, `triage.md` and `apply-labels.sh`. The board workflow (`add-to-project.yml`) names no repo; check that the next issue opened reaches board #5, in case the org secret `ADD_TO_PROJECT_PAT` is scoped to named repositories.
+
+## Each model today, through plant's functions (develop@e41aa178)
+
+| | FF16 | TF24 family | K93 |
+|---|---|---|---|
+| Sampling (`sample_size_distribution()`, birth-date runs only) | yes | yes; TF24 defaults to birth date | yes |
+| Sizes from `expand_state()` | 13 columns | 13 columns | none |
+| What `height` holds | height, m | height, m | stem diameter, cm |
+| Crown | Yokozawa `q`, `eta` = 12, six shading models | the same; mean-light by default, refuses PPA and the boxes | the profile smooths basal area; no crown |
+| Profile in the tidy environment | light by height | light by height | none recorded |
+| Model-specific outputs | none | soil moisture and depth by layer, water fluxes; per node `opt_psi_leaf`, `opt_root_psi`, `transpiration`, `stom_cond_CO2`, `profit`, `Tleaf`; no soil water potential | none |
+
+FF16 runs on the height coordinate by default, which the 2D figures can read but `realise_stand()` cannot, since sampling needs birth date.
+
 ## Invariants (a future edit could break these without noticing)
 
-- **plant is pinned to a commit.** `DESCRIPTION`'s `Remotes` names a `develop` sha, and `.plant-interface-version` records it with the breaking changes absorbed so far. Move both together, after checking the suite against the new commit; never track `develop` unpinned.
+Each of these is kept through the overhaul. The two amended for three models say so.
 
-- **Sampling is plant's.** `realise_stand()` draws trees with `plant::sample_size_distribution()` (traitecoevo/plant#722, fixed in #724), which needs a run carried in birth date. Trees persist through frames and never revive, and at every frame their number is Poisson about the model's density. standviz does no sampling of its own. A test checks counts above `min_height` against `plant::integrate_over_size_distribution(lower = min_height)`.
-- **Geometry is the model, not an artist's guess.** Leaf area, stem diameter and every other size come from the strategy's own allometry through `plant::expand_state()`; standviz keeps all of its columns. Crown cross-section area at height `z` is proportional to the Yokozawa leaf density `q(z, H)`. The only free visual parameter is leaf area per crown volume (`lad`).
+- **plant is pinned to a commit.** `DESCRIPTION`'s `Remotes` names a `develop` sha, and `.plant-interface-version` records it with the breaking changes absorbed so far. Move both together, after checking the suite against the new commit; never track `develop` unpinned.
+- **Sampling is plant's.** `realise_stand()` draws trees with `plant::sample_size_distribution()` (traitecoevo/plant#722, fixed in #724), which needs a run carried in birth date. Trees persist through frames and never revive, and at every frame their number is Poisson about the model's density. The package does no sampling of its own. A test checks counts above `min_height` against `plant::integrate_over_size_distribution(lower = min_height)`.
+- **Geometry is the model, not an artist's guess.** Leaf area, stem diameter and every other size come from the strategy's own allometry through `plant::expand_state()`, and every column is kept. Crown cross-section area at height `z` is proportional to the model's leaf density `q(z, H)`. The only free visual parameter is leaf area per crown volume (`lad`). Amended (proposed): `q` comes from plant's crown export, not a copy here, and a model without a height or a crown (K93) is not given one.
 - **Drawn sizes never shrink.** Height, crown scale and stem diameter take their running maximum per tree, because interpolation across a changing set of nodes can lower a followed height by under a millimetre. Every other column is plant's value.
-- **Crowns are drawn down to the height holding 95% of the leaf area.** Below that the Yokozawa profile is a long, near-empty tail that reads as a funnel.
+- **Crowns are drawn down to the height holding 95% of the leaf area.** Below that the Yokozawa profile is a long, near-empty tail that reads as a funnel. Amended (proposed): the cut-off is found on plant's `Q`, so it holds for every shading model.
 - **Positions are a seeded visual device.** `plant` is spatially implicit. Positions come from best-candidate sampling on a torus, spacing the larger trees by crown size, so stands tile seamlessly. Docs and the viewer must not imply they come from the model.
 - **The viewer bundle is the renderer contract**: frames, light profile, static tree records (species, birth date, `x`, `y`, first frame, frame count, offset), and each tree's height, crown scale and stem diameter at every visible frame as 16-bit integers spanning each variable's range, plus any `colour_by` variables. The page grows with tree-frames, by six bytes for the sizes and two for each `colour_by` variable, so `min_height` defaults to 1.5 m: the 100-year demo, with the two default colour variables, is then about 10 MB. At 1 m it would pass the 16 MB limit of a claude.ai page. `stand_long()` gives the same rows at full precision.
 
 ## Open, in order
 
-0. **New name.** `standviz` is a placeholder. The package and the GitHub repo (`traitecoevo/standViz`) will be renamed to something that evokes trees and visualisation; the name is undecided. The 2013–14 issues about the old code were closed on 2026-11-04.
-
 1. ~~First PR: package scaffold, `realise_stand()`, `stand_long()`, `write_viewer()`, the three.js stand viewer, and a demo FF16 two-species run (`inst/examples/make_demo.R`).~~ Done.
 2. ~~Use plant's sampler and allometry.~~ Done: `plant::sample_size_distribution()` and `plant::expand_state()`.
-3. Blender script reading `stand_long()` output (`inst/blender/`).
-4. `realise_landscape()` and a landscape view with LOD (impostors far away).
-5. TF24 support: crown shape (`expand_state()` already covers its allometry) plus colour by water potential or leaf temperature.
-6. Stochastic `plant` runs mapped directly to individuals, skipping the sampling.
+3. Migrate to plant's `run()` and pin plant (standViz#10). Open.
+4. Daniel settles the proposal above (standViz#9).
+5. plant PRs, in order: the crown export; the size metadata with K93's sizes and environment; TF24's soil water potential.
+6. The rename: GitHub, the package, the local folder, plant-meta.
+7. The restructure: one core for FF16, TF24 and K93, crowns from plant, a `plant_run` accepted, a realise-and-plot test per model. This absorbs the old "TF24 support" item.
+8. The figures move in, with plant's tests for them.
+9. overstorey moves its four pages (`guides/example-analysis.qmd`, `guides/initialising-a-patch.qmd`, `guides/tf24-hydraulics-and-acclimation.qmd`, `theory/implementation/canopy-models.qmd`) to plantpress.
+10. plant removes `plot_size_distribution()`, `TF24_plot_diagnostics()`, `FF16_generate_stand_report()` and `inst/reports/`, their tests (`test-initial-state.R`'s plot check, `test-tf24-plot-diagnostics.R`, `test-model-ff16.R`'s report test), the `pkgdown` entry, and the `Suggests` only they use (`ggplot2`, `ggridges`, `patchwork`, `kableExtra`; and `knitr` and `rmarkdown` if the pkgdown build does not need them), with a NEWS entry each.
+11. The report (`stand_report()`).
+12. Blender script reading `stand_long()` output (`inst/blender/`).
+13. `realise_landscape()` and a landscape view with LOD (impostors far away).
+14. Stochastic `plant` runs mapped directly to individuals, skipping the sampling.
