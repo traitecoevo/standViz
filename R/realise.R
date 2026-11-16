@@ -198,7 +198,8 @@ tree_geometry <- function(rows, results, lad, crowned) {
 ## are spaced from the large ones only, and small trees, the great majority,
 ## are scattered uniformly. Spacing every pair is quadratic in a count that
 ## runs to tens of thousands. `r_max` is a crown's widest radius, or a stem's.
-## Stems (K93) are far narrower than any crown, so there the widest tenth are
+## Stems (K93) are far narrower than any crown, so when every tree is narrower
+## than a medium crown (stems, or a stand of seedlings) the widest tenth are
 ## spaced from each other and the rest scattered: with a single medium class,
 ## every stem would be pushed away from the same few anchors and they would
 ## bunch on the far side of the torus.

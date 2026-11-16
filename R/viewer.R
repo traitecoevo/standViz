@@ -81,9 +81,10 @@ stand_json <- function(stand, colour_by = character(0)) {
       if (crowned) out$profile <- stand$crowns[[k]]$profile
       out
     }),
-    trees = list(species = match(tr$species, stand$species$id) - 1L,
-                 x = tr$x, y = tr$y, birth = tr$birth_frame - 1L, frames = n,
-                 offset = cumsum(n) - n),
+    ## I() keeps a stand of one tree as arrays under auto_unbox.
+    trees = lapply(list(species = match(tr$species, stand$species$id) - 1L,
+                        x = tr$x, y = tr$y, birth = tr$birth_frame - 1L,
+                        frames = n, offset = cumsum(n) - n), I),
     rows = lapply(drawn, function(v) pack_u16(r[[v]])),
     colour = lapply(seq_along(colour_by), function(i) {
       c(list(label = names(colour_by)[i], column = unname(colour_by[i])),
